@@ -2,8 +2,10 @@ import re
 from typing import List
 from pathlib import Path
 
+from .base import BaseFileProcessor
 
-class TextPreprocessor:
+
+class TextPreprocessor(BaseFileProcessor):
     """Clean and preprocess document content removing artifacts and noise."""
     
     def __init__(self):
@@ -82,10 +84,22 @@ class TextPreprocessor:
         return content.strip()
     
     
+    def process_file(self, file_path: Path) -> str:
+        """Read and preprocess a single file (BaseFileProcessor interface)."""
+        return self.preprocess_file(file_path)
+    
+    def supports_file_type(self, file_path: Path) -> bool:
+        """Check if file type is supported for preprocessing."""
+        supported_exts = {'.txt', '.md', '.html', '.htm'}
+        return file_path.suffix.lower() in supported_exts
+    
     def preprocess_file(self, file_path: Path) -> str:
         """Read and preprocess a single file."""
+        if not self.supports_file_type(file_path):
+            raise ValueError(f"Unsupported file type: {file_path.suffix}")
+            
         try:
-            # Handle different encodings
+            # Handle different encodings efficiently
             encodings = ['utf-8', 'utf-8-sig', 'latin1', 'cp1252']
             
             for encoding in encodings:
@@ -95,7 +109,7 @@ class TextPreprocessor:
                 except UnicodeDecodeError:
                     continue
             
-            # If all encodings fail, try with error handling
+            # Fallback with error handling
             content = file_path.read_text(encoding='utf-8', errors='ignore')
             return self.clean_content(content)
             
@@ -107,9 +121,8 @@ class TextPreprocessor:
         if not input_dir.exists():
             return []
         
-        # Use iterdir() for better performance than multiple glob calls
-        supported_exts = {'.txt', '.md', '.html', '.htm'}
+        # Use iterdir() with supports_file_type() for consistency
         files = [f for f in input_dir.iterdir() 
-                if f.is_file() and f.suffix.lower() in supported_exts]
+                if f.is_file() and self.supports_file_type(f)]
         
         return sorted(files)
