@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 
 from .models import Chunk, DocumentMetadata, DocumentStructure, ChunkMetadata
-from .preprocessor import TextPreprocessor
+from .processors import TextPreprocessor
 
 logger = logging.getLogger(__name__)
 
