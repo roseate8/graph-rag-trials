@@ -50,3 +50,7 @@ data/
 # Logs
 *.log
 logs/
+
+# Input files (keep folder structure)
+input/*
+!input/.gitkeep
