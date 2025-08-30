@@ -750,7 +750,7 @@ Return your analysis as JSON."""
         return []
     
     def _detect_json_toc(self, json_path: str) -> List[TOCEntry]:
-        """Detect TOC from JSON file by examining table structures."""
+        """Detect TOC from JSON file by examining table structures one by one."""
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
                 json_data = json.load(f)
@@ -763,13 +763,26 @@ Return your analysis as JSON."""
             
             print(f"   Found {len(tables)} tables in JSON")
             
-            # Check first few tables for TOC indicators
-            for i, table in enumerate(tables[:5]):  # Check only first 5 tables
+            # Check tables one by one with early termination (limit to first 10)
+            max_tables_to_check = min(10, len(tables))
+            
+            for i in range(max_tables_to_check):
+                table = tables[i]
+                print(f"   Checking table {i}...")
+                
+                # Immediately check if this table is a TOC
                 if self._is_toc_table(table):
                     print(f"   Table {i} appears to be TOC")
-                    return self._extract_toc_from_table(table)
+                    toc_entries = self._extract_toc_from_table(table)
+                    
+                    # If we found valid entries, return immediately
+                    if toc_entries:
+                        print(f"   Successfully extracted {len(toc_entries)} TOC entries from table {i}")
+                        return toc_entries
+                    else:
+                        print(f"   Table {i} identified as TOC but no entries extracted, continuing...")
             
-            print("   No TOC table found in first 5 tables")
+            print(f"   No valid TOC table found in first {max_tables_to_check} tables")
             return []
             
         except Exception as e:
@@ -777,29 +790,44 @@ Return your analysis as JSON."""
             return []
     
     def _is_toc_table(self, table: Dict[str, Any]) -> bool:
-        """Check if a table appears to be a TOC."""
+        """Check if a table appears to be a TOC with early termination."""
         if not isinstance(table, dict):
             return False
         
-        # Check table label
+        # Quick check: table label (fastest check first)
         label = table.get('label', '').lower()
-        if 'document_index' in label or 'toc' in label or 'contents' in label:
+        if any(keyword in label for keyword in ['document_index', 'toc', 'contents']):
+            print(f"     Found TOC keyword in table label: '{label}'")
             return True
         
-        # Check table cells for TOC indicators
+        # Check table cells for TOC indicators (early termination)
         cells = table.get('data', {}).get('table_cells', [])
         if not cells:
             return False
         
-        # Look for TOC patterns in cell text
-        cell_texts = [cell.get('text', '').lower() for cell in cells[:20]]  # Check first 20 cells
-        
+        # Optimized: check fewer cells with early termination
+        max_cells_to_check = min(15, len(cells))  # Check max 15 cells instead of 20
         toc_indicators = 0
-        for text in cell_texts:
-            if any(indicator in text for indicator in ['part i', 'item 1', 'item 2', 'business', 'page']):
-                toc_indicators += 1
+        toc_keywords = ['part i', 'item 1', 'item 2', 'business', 'page', 'contents']
         
-        return toc_indicators >= 3  # Need at least 3 TOC indicators
+        for i in range(max_cells_to_check):
+            cell_text = cells[i].get('text', '').lower()
+            if cell_text and any(keyword in cell_text for keyword in toc_keywords):
+                toc_indicators += 1
+                
+                # Early termination: if we find 3 indicators, we're confident this is TOC
+                if toc_indicators >= 3:
+                    print(f"     Found {toc_indicators} TOC indicators, early termination")
+                    return True
+        
+        # Final check: need at least 3 TOC indicators
+        is_toc = toc_indicators >= 3
+        if is_toc:
+            print(f"     Found {toc_indicators} TOC indicators, confirmed as TOC table")
+        else:
+            print(f"     Only found {toc_indicators} TOC indicators, not a TOC table")
+        
+        return is_toc
     
     def _extract_toc_from_table_fast(self, table: Dict[str, Any]) -> List[TOCEntry]:
         """Fast extraction of TOC entries from table structure."""
