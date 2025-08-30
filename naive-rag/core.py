@@ -5,8 +5,13 @@ Core RAG system orchestration and main interface - combines rag_system.py + main
 import sys
 import logging
 import warnings
+import json
+import time
+import psutil
+from pathlib import Path
+from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 try:
     from .retrieval import MilvusRetriever, RetrievedChunk
@@ -47,7 +52,10 @@ class RAGSystem:
         include_scores: bool = False,
         # LLM parameters
         llm_type: str = "mock",
-        llm_model: str = "gpt-4o-mini"
+        llm_model: str = "gpt-4o-mini",
+        # History parameters
+        enable_history: bool = True,
+        history_file: str = "conversation_history.json"
     ):
         """Initialize complete RAG system."""
         # Initialize components
@@ -65,6 +73,12 @@ class RAGSystem:
             client_type=llm_type,
             model=llm_model
         )
+        
+        # History configuration
+        self.enable_history = enable_history
+        # Save conversation history to rag-ui folder
+        rag_ui_path = Path(__file__).parent.parent / "rag-ui"
+        self.history_file = rag_ui_path / history_file
         
         self.connected = False
         logger.info("Initialized RAG system")
@@ -86,6 +100,156 @@ class RAGSystem:
             self.connected = False
             logger.info("RAG system disconnected")
     
+    def _get_resource_info(self) -> Dict[str, Any]:
+        """Get current resource usage information."""
+        try:
+            # Check GPU availability
+            gpu_info = {
+                "gpu_available": False,
+                "gpuutil_not_installed": True
+            }
+            
+            # Try to get GPU info if available
+            try:
+                import GPUtil
+                gpus = GPUtil.getGPUs()
+                if gpus:
+                    gpu_info = {
+                        "gpu_available": True,
+                        "gpuutil_not_installed": False,
+                        "gpu_count": len(gpus),
+                        "gpu_memory_used": gpus[0].memoryUsed,
+                        "gpu_memory_total": gpus[0].memoryTotal
+                    }
+            except ImportError:
+                pass  # Keep default GPU info
+            
+            # Get system memory and CPU
+            memory = psutil.virtual_memory()
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            
+            return {
+                "memory_used_mb": round(memory.used / 1024 / 1024, 1),
+                "memory_total_mb": round(memory.total / 1024 / 1024, 1),
+                "memory_percent": round(memory.percent, 1),
+                "cpu_percent": round(cpu_percent, 1),
+                "gpu": gpu_info
+            }
+        except Exception as e:
+            logger.error(f"Error getting resource info: {e}")
+            return {
+                "memory_used_mb": 0.0,
+                "memory_total_mb": 0.0,
+                "memory_percent": 0.0,
+                "cpu_percent": 0.0,
+                "gpu": {"gpu_available": False, "gpuutil_not_installed": True}
+            }
+
+    def _load_conversation_history(self) -> List[Dict]:
+        """Load conversation history from JSON file."""
+        if not self.history_file.exists():
+            return []
+        
+        try:
+            with open(self.history_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading conversation history: {e}")
+            return []
+    
+    def _save_conversation_entry(self, query: str, result: 'RAGResult', initial_resources: Dict, final_resources: Dict, timing_data: Dict):
+        """Save a conversation entry to history in the exact format specified."""
+        if not self.enable_history:
+            return
+        
+        try:
+            # Ensure rag-ui directory exists
+            self.history_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            history = self._load_conversation_history()
+            
+            # Calculate peak resources
+            peak_memory_mb = max(initial_resources.get("memory_used_mb", 0), final_resources.get("memory_used_mb", 0))
+            peak_cpu_percent = max(initial_resources.get("cpu_percent", 0), final_resources.get("cpu_percent", 0))
+            
+            # Format retrieved chunks for the exact format
+            retrieved_chunks_data = []
+            for chunk in result.retrieved_chunks:
+                # Create metadata dict from chunk attributes
+                metadata = {
+                    "chunk_id": chunk.chunk_id,
+                    "doc_id": chunk.doc_id,
+                    "word_count": chunk.word_count,
+                    "section_path": chunk.section_path,
+                    "chunk_type": getattr(chunk, 'chunk_type', 'unknown')
+                }
+                
+                chunk_data = {
+                    "content": chunk.content,
+                    "score": chunk.similarity_score,
+                    "metadata": metadata
+                }
+                retrieved_chunks_data.append(chunk_data)
+            
+            # Create the entry in the exact format specified
+            entry = {
+                "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3] + "Z",
+                "query": query,
+                "result": {
+                    "retrieved_chunks": retrieved_chunks_data,
+                    "context_length": result.context_token_count,
+                    "llm_response": {
+                        "query": query,
+                        "method": "layout_aware_chunking",
+                        "context": "",  # Context would be the formatted chunks text
+                        "answer": result.response,
+                        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f"),
+                        "tokens_used": result.response_tokens or 0
+                    },
+                    "timing": {
+                        "vector_search_time": timing_data.get("retrieval_time", 0),
+                        "rerank_time": 0.0,  # Not implemented in current system
+                        "context_time": 0.0,  # Time to format context
+                        "llm_time": timing_data.get("generation_time", 0),
+                        "total_time": timing_data.get("total_time", 0)
+                    },
+                    "resources": {
+                        "initial": initial_resources,
+                        "final": final_resources,
+                        "peak_memory_mb": peak_memory_mb,
+                        "peak_cpu_percent": peak_cpu_percent
+                    }
+                },
+                "tokens_used": result.response_tokens or 0,
+                "timing": {
+                    "vector_search_time": timing_data.get("retrieval_time", 0),
+                    "rerank_time": 0.0,
+                    "context_time": 0.0,
+                    "llm_time": timing_data.get("generation_time", 0),
+                    "total_time": timing_data.get("total_time", 0)
+                },
+                "resources": {
+                    "initial": initial_resources,
+                    "final": final_resources,
+                    "peak_memory_mb": peak_memory_mb,
+                    "peak_cpu_percent": peak_cpu_percent
+                }
+            }
+            
+            history.append(entry)
+            
+            # Keep only last 100 conversations
+            if len(history) > 100:
+                history = history[-100:]
+            
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"Saved conversation entry to {self.history_file}")
+        
+        except Exception as e:
+            logger.error(f"Error saving conversation history: {e}")
+    
     def query(
         self,
         user_query: str,
@@ -94,15 +258,56 @@ class RAGSystem:
         system_prompt: Optional[str] = None
     ) -> RAGResult:
         """Execute complete RAG pipeline for a user query."""
+        # Capture initial resources
+        initial_resources = self._get_resource_info()
+        start_total_time = time.time()
+        
         try:
             self._validate_connection(user_query)
             chunks, retrieval_time = self._retrieve_chunks(user_query, top_k, min_similarity)
+            
+            # Time context formatting
+            context_start = time.time()
             rag_prompt = self._format_context(user_query, chunks, system_prompt)
+            context_time = time.time() - context_start
+            
             llm_response, generation_time = self._generate_response(rag_prompt)
-            return self._build_result(user_query, chunks, llm_response, retrieval_time, generation_time)
+            result = self._build_result(user_query, chunks, llm_response, retrieval_time, generation_time)
+            
+            # Capture final resources and timing
+            total_time = time.time() - start_total_time
+            final_resources = self._get_resource_info()
+            
+            timing_data = {
+                "retrieval_time": retrieval_time,
+                "context_time": context_time,
+                "generation_time": generation_time,
+                "total_time": total_time
+            }
+            
+            # Save to conversation history with full metrics
+            self._save_conversation_entry(user_query, result, initial_resources, final_resources, timing_data)
+            
+            return result
         except Exception as e:
             logger.error(f"Error in RAG pipeline: {e}")
-            return self._create_error_result(user_query, str(e))
+            error_result = self._create_error_result(user_query, str(e))
+            
+            # Capture final resources for error case
+            total_time = time.time() - start_total_time
+            final_resources = self._get_resource_info()
+            
+            timing_data = {
+                "retrieval_time": 0,
+                "context_time": 0,
+                "generation_time": 0,
+                "total_time": total_time
+            }
+            
+            # Save error to conversation history as well
+            self._save_conversation_entry(user_query, error_result, initial_resources, final_resources, timing_data)
+            
+            return error_result
     
     def _validate_connection(self, user_query: str) -> None:
         """Validate RAG system connection."""

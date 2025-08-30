@@ -1,7 +1,13 @@
 from typing import List
 from sentence_transformers import SentenceTransformer
 
-from ..chunking.models import Chunk
+try:
+    from ..chunking.models import Chunk
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent.parent))
+    from chunking.models import Chunk
 
 
 class EmbeddingService:

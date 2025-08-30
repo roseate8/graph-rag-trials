@@ -16,7 +16,13 @@
       "Bash(grep:*)",
       "Bash(sed:*)",
       "Bash(docker-compose:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(start http://localhost:8080)",
+      "Bash(timeout:*)",
+      "Read(E:\\Projects\\rag-trials\\rag_pipeline/**)",
+      "Bash(cat:*)",
+      "Bash(del test_api_key.py)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []
