@@ -14,7 +14,9 @@
       "Bash(timeout 30 python:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker run:*)"
     ],
     "deny": [],
     "ask": []
