@@ -114,3 +114,15 @@ def has_openai_api_key() -> bool:
 def clear_openai_api_key() -> None:
     """Manually clear the stored API key."""
     _api_key_manager.clear_key_now()
+
+
+def set_openai_api_key(api_key: str) -> None:
+    """Programmatically set the OpenAI API key (for UI integration)."""
+    if not api_key:
+        raise ValueError("API key cannot be empty")
+    
+    # Use frozenset for O(1) prefix checking
+    if not any(api_key.startswith(prefix) for prefix in _api_key_manager.VALID_KEY_PREFIXES):
+        raise ValueError("API key doesn't look like an OpenAI key (should start with 'sk-' or 'sk-proj-')")
+    
+    _api_key_manager._set_temporary_key(api_key)

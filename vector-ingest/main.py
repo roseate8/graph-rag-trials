@@ -21,9 +21,10 @@ sys.path.append(str(Path(__file__).parent / "src"))
 from src.chunking.models import Chunk, DocumentMetadata, DocumentStructure, ChunkMetadata
 from src.chunking.processors.toc_detector import TableOfContentsDetector
 from src.chunking.processors.text_chunker import TextChunker
-from src.chunking.processors import PostProcessor, ChunkCleaner
+from src.chunking.processors import PostProcessor, ChunkCleaner, TableProcessor
 from src.chunking.processors.entity_extractor import EntityExtractor
-from src.embeddings import EmbeddingService
+from src.chunking.processors.llm_utils import get_openai_api_key, has_openai_api_key, clear_openai_api_key, set_openai_api_key
+from src.embeddings import EmbeddingService, clear_milvus_collection, drop_milvus_collection, MilvusVectorStore, get_config
 
 # Set up logging
 logging.basicConfig(
@@ -98,7 +99,7 @@ class TokenTracker:
 class DocumentProcessor:
     """Streamlined document processing with integrated TOC detection."""
     
-    def __init__(self, input_dir: Path = None, output_dir: Path = None, use_cache: bool = True):
+    def __init__(self, input_dir: Path = None, output_dir: Path = None, use_cache: bool = True, enable_llm: bool = True):
         self.toc_detector = TableOfContentsDetector()
         self.text_chunker = TextChunker(target_words=700, max_words=800, overlap_words=15)
         self.post_processor = PostProcessor()
@@ -108,9 +109,13 @@ class DocumentProcessor:
         self.input_dir = input_dir or Path.cwd() / "input"
         self.output_dir = output_dir or Path.cwd() / "output"
         self.use_cache = use_cache
+        self.enable_llm = enable_llm
         self.cache_dir = self.output_dir / ".cache"
         if use_cache:
             self.cache_dir.mkdir(exist_ok=True)
+        
+        # Initialize table processor (will be configured per document)
+        self.table_processor = None
         
         # File type mapping for efficiency
         self.type_map = {
@@ -178,15 +183,46 @@ class DocumentProcessor:
             }
             
             for chunk in chunks:
+                metadata = {
+                    'chunk_id': chunk.metadata.chunk_id,
+                    'doc_id': chunk.metadata.doc_id,
+                    'chunk_type': chunk.metadata.chunk_type,
+                    'word_count': chunk.metadata.word_count,
+                    'section_path': chunk.metadata.section_path or []
+                }
+                
+                # Add optional metadata fields if present
+                if chunk.metadata.page is not None:
+                    metadata['page'] = chunk.metadata.page
+                    
+                # Add lists if not empty
+                if chunk.metadata.outbound_refs:
+                    metadata['outbound_refs'] = [ref.model_dump() for ref in chunk.metadata.outbound_refs]
+                if chunk.metadata.inbound_refs:
+                    metadata['inbound_refs'] = chunk.metadata.inbound_refs
+                if chunk.metadata.regions:
+                    metadata['regions'] = chunk.metadata.regions
+                if chunk.metadata.metrics:
+                    metadata['metrics'] = chunk.metadata.metrics
+                if chunk.metadata.time_periods:
+                    metadata['time_periods'] = chunk.metadata.time_periods
+                if chunk.metadata.dates:
+                    metadata['dates'] = chunk.metadata.dates
+                    
+                # Add table-specific metadata for table chunks
+                if chunk.metadata.chunk_type == "table":
+                    if chunk.metadata.table_id:
+                        metadata['table_id'] = chunk.metadata.table_id
+                    if chunk.metadata.column_headers:
+                        metadata['column_headers'] = chunk.metadata.column_headers
+                    if chunk.metadata.table_title:
+                        metadata['table_title'] = chunk.metadata.table_title
+                    if chunk.metadata.table_caption:
+                        metadata['table_caption'] = chunk.metadata.table_caption
+                
                 chunk_data = {
                     'content': chunk.content,
-                    'metadata': {
-                        'chunk_id': chunk.metadata.chunk_id,
-                        'doc_id': chunk.metadata.doc_id,
-                        'chunk_type': chunk.metadata.chunk_type,
-                        'word_count': chunk.metadata.word_count,
-                        'section_path': chunk.metadata.section_path or []
-                    }
+                    'metadata': metadata
                 }
                 
                 if hasattr(chunk, 'embedding') and chunk.embedding:
@@ -243,13 +279,47 @@ class DocumentProcessor:
             if max_workers is None:
                 max_workers = min(len(files_to_process), cpu_count())
             
+            # Temporarily disable multiprocessing to debug freezing issue
+            logger.info(f"Processing {len(files_to_process)} files sequentially (debugging mode)")
+            
+            # Sequential processing for debugging
+            for file_path in files_to_process:
+                try:
+                    chunks, token_stats = process_single_document(file_path, self.input_dir, self.output_dir, self.use_cache, self.enable_llm, None)
+                    all_chunks.extend(chunks)
+                    
+                    # Update token tracking
+                    self.token_tracker.add_input_tokens(token_stats['input_tokens'])
+                    self.token_tracker.add_processing_tokens(token_stats['processing_tokens'])
+                    self.token_tracker.add_embedding_tokens(token_stats['embedding_tokens'])
+                    
+                    logger.info(f"Generated {len(chunks)} chunks from {file_path.name}")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Failed to process {file_path.name}: {str(e)}")
+                    continue
+            
+            """
+            # Original parallel processing code (temporarily disabled)
             logger.info(f"Processing {len(files_to_process)} files with {max_workers} workers")
             
             # For parallel processing, we need a standalone function
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                # Get API key from main process to pass to workers
+                api_key = None
+                if self.enable_llm and has_openai_api_key():
+                    try:
+                        # Get the raw API key (don't use get_openai_api_key as it might prompt again)
+                        from src.chunking.processors.llm_utils import _api_key_manager
+                        api_key = _api_key_manager._api_key
+                        logger.debug(f"🔑 API key retrieved for worker processes: {'✓' if api_key else '✗'}")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Failed to retrieve API key for workers: {e}")
+                        api_key = None
+                
                 # Submit all files for processing
                 future_to_file = {
-                    executor.submit(process_single_document, file_path, self.input_dir, self.output_dir, self.use_cache): file_path
+                    executor.submit(process_single_document, file_path, self.input_dir, self.output_dir, self.use_cache, self.enable_llm, api_key): file_path
                     for file_path in files_to_process
                 }
                 
@@ -270,6 +340,7 @@ class DocumentProcessor:
                     except Exception as e:
                         logger.error(f"❌ Failed to process {file_path.name}: {str(e)}")
                         continue
+            """
         
         logger.info(f"🎯 Total chunks generated: {len(all_chunks)}")
         return all_chunks
@@ -296,7 +367,21 @@ class DocumentProcessor:
         logger.info("Analyzing document structure...")
         structure = self._analyze_structure(cleaned_content, file_path)
         
-        # 4. Create initial chunks using TextChunker
+        # 4. Process tables if JSON file exists
+        table_chunks = []
+        if file_path:
+            json_file = file_path.with_suffix('.json')
+            logger.info(f"🔍 Checking for JSON file: {json_file}")
+            
+            if json_file.exists():
+                logger.info(f"✅ Found JSON file - proceeding with table processing")
+                table_chunks = self._process_tables(json_file, file_path, metadata)
+            else:
+                logger.info(f"ℹ️  No JSON file found at {json_file} - skipping table processing")
+        else:
+            logger.info("ℹ️  No file_path provided - skipping table processing")
+        
+        # 5. Create initial chunks using TextChunker
         logger.info("🔪 Creating text chunks...")
         raw_chunks = self._create_raw_chunks(cleaned_content, structure, metadata)
         
@@ -304,11 +389,15 @@ class DocumentProcessor:
         logger.info("🧹 Post-processing chunks...")
         processed_chunks = self._post_process_chunks(raw_chunks)
         
-        # 6. Extract entities and populate metadata
-        logger.info("🏷️  Extracting entities...")
-        chunks_with_entities = self._extract_entities(processed_chunks)
+        # 6. Combine all chunks (text + table)
+        all_chunks = processed_chunks + table_chunks
+        logger.info(f"Combined {len(processed_chunks)} text chunks + {len(table_chunks)} table chunks = {len(all_chunks)} total")
         
-        # 7. Generate embeddings
+        # 7. Extract entities and populate metadata
+        logger.info("🏷️  Extracting entities...")
+        chunks_with_entities = self._extract_entities(all_chunks)
+        
+        # 8. Generate embeddings
         logger.info("🔮 Generating embeddings...")
         final_chunks = self._generate_embeddings(chunks_with_entities)
         
@@ -403,6 +492,69 @@ class DocumentProcessor:
             toc_sections = []
         
         return DocumentStructure(toc_sections=toc_sections)
+    
+    def _process_tables(self, json_file: Path, md_file: Path, metadata: DocumentMetadata) -> List[Chunk]:
+        """Process tables using JSON detection + MD extraction strategy."""
+        try:
+            logger.info(f"🏢 Starting table processing for {metadata.doc_id}...")
+            logger.info(f"📊 JSON source: {json_file.name}")
+            logger.info(f"📝 MD source: {md_file.name}")
+            
+            # Check file existence and sizes
+            if not json_file.exists():
+                logger.error(f"❌ JSON file not found: {json_file}")
+                return []
+            
+            if not md_file.exists():
+                logger.error(f"❌ MD file not found: {md_file}")
+                return []
+            
+            json_size = json_file.stat().st_size
+            md_size = md_file.stat().st_size
+            logger.info(f"📏 File sizes: JSON={json_size:,} bytes, MD={md_size:,} bytes")
+            
+            # Initialize table processor with MD file path and LLM setting
+            self.table_processor = TableProcessor(md_file_path=md_file, generate_llm_metadata=self.enable_llm)
+            
+            # Read JSON content
+            logger.debug("📖 Reading JSON content...")
+            json_content = json_file.read_text(encoding='utf-8')
+            logger.debug(f"JSON content loaded: {len(json_content)} characters")
+            
+            # Process tables asynchronously
+            logger.info("🔄 Processing tables with TableProcessor...")
+            import asyncio
+            table_chunks = asyncio.run(
+                self.table_processor.process(json_content, doc_id=metadata.doc_id)
+            )
+            
+            # Log results and token usage
+            logger.info(f"✅ Table processing complete: {len(table_chunks)} chunks generated")
+            
+            # Extract and log token statistics from table processor
+            if (self.table_processor and 
+                hasattr(self.table_processor, 'table_chunker') and 
+                self.table_processor.table_chunker.llm_processor):
+                
+                stats = self.table_processor.table_chunker.llm_processor.get_token_stats()
+                if stats['global_totals']['api_calls'] > 0:
+                    # Log detailed token report
+                    self.table_processor.table_chunker.llm_processor.log_final_token_report()
+                    
+                    # Add to main token tracker
+                    self.token_tracker.add_openai_tokens(
+                        stats['global_totals']['input_tokens'], 
+                        stats['global_totals']['output_tokens'], 
+                        stats['global_totals']['total_cost']
+                    )
+                else:
+                    logger.info("ℹ️  No OpenAI API calls made for table processing")
+            
+            return table_chunks
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to process tables for {metadata.doc_id}: {str(e)}", exc_info=True)
+            return []
     
     def _create_raw_chunks(self, content: str, structure: DocumentStructure, doc_metadata: DocumentMetadata) -> List[Chunk]:
         """Create initial chunks using TextChunker."""
@@ -518,16 +670,27 @@ class DocumentProcessor:
         return chunks_with_embeddings
 
 
-def process_single_document(file_path: Path, input_dir: Path, output_dir: Path, use_cache: bool = True):
+def process_single_document(file_path: Path, input_dir: Path, output_dir: Path, use_cache: bool = True, enable_llm: bool = True, api_key: str = None):
     """
     Standalone function for processing a single document.
     This function is designed to be used with ProcessPoolExecutor.
     
+    Args:
+        api_key: OpenAI API key to set in this worker process
+    
     Returns:
         Tuple[List[Chunk], Dict[str, int]]: (chunks, token_stats)
     """
+    # Set API key for this worker process if provided
+    if api_key and enable_llm:
+        try:
+            set_openai_api_key(api_key)
+            logger.info(f"🔑 API key configured for worker process processing {file_path.name}")
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to set API key in worker process: {e}")
+    
     # Initialize a processor for this worker
-    processor = DocumentProcessor(input_dir, output_dir, use_cache)
+    processor = DocumentProcessor(input_dir, output_dir, use_cache, enable_llm)
     
     # Process the document
     chunks = processor.process_document(file_path)
@@ -544,6 +707,140 @@ def process_single_document(file_path: Path, input_dir: Path, output_dir: Path, 
         processor._save_to_cache(file_path, chunks)
     
     return chunks, token_stats
+
+
+def setup_openai_api_key(require_key: bool = False) -> bool:
+    """Setup OpenAI API key for table processing with LLM metadata generation."""
+    try:
+        if has_openai_api_key():
+            logger.info("✅ OpenAI API key already available for this session")
+            return True
+        
+        if require_key:
+            logger.info("🔑 OpenAI API key required for LLM-powered table metadata generation")
+            logger.info("📋 This will generate table titles, summaries, and classifications")
+            
+            # Prompt for API key using secure method
+            api_key = get_openai_api_key()
+            logger.info("✅ OpenAI API key configured successfully")
+            return True
+        else:
+            logger.info("🔑 OpenAI API key will be requested for enhanced table metadata")
+            logger.info("💡 Press Enter to skip if you don't want to provide an API key")
+            try:
+                # Try to get API key but don't fail if unavailable
+                api_key = get_openai_api_key()
+                logger.info("✅ OpenAI API key configured successfully")
+                return True
+            except Exception as e:
+                logger.info("ℹ️  No OpenAI API key provided - table processing will skip LLM metadata generation")
+                return False
+            
+    except KeyboardInterrupt:
+        logger.info("\n⚠️  API key setup cancelled by user")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Failed to setup OpenAI API key: {e}")
+        return False
+
+
+def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool:
+    """
+    Upload processed chunks to Milvus vector store.
+    
+    Args:
+        chunks_file: Path to the processed chunks JSON file
+        config_type: Milvus configuration type to use
+        
+    Returns:
+        bool: True if upload successful, False otherwise
+    """
+    try:
+        import json
+        
+        # Load configuration
+        config = get_config(config_type)
+        logger.info(f"📡 Connecting to Milvus at {config.host}:{config.port}")
+        logger.info(f"📂 Target collection: {config.collection_name}")
+        
+        # Load chunks
+        logger.info(f"📥 Loading chunks from: {chunks_file}")
+        with open(chunks_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        chunks = data.get("chunks", [])
+        chunks_with_embeddings = [c for c in chunks if "embedding" in c and c["embedding"]]
+        
+        logger.info(f"📊 Total chunks: {len(chunks)}")
+        logger.info(f"📊 Chunks with embeddings: {len(chunks_with_embeddings)}")
+        
+        if not chunks_with_embeddings:
+            logger.warning("⚠️ No chunks with embeddings found - nothing to upload")
+            return False
+        
+        # Connect to Milvus
+        store = MilvusVectorStore(config)
+        
+        if not store.connect():
+            logger.error("❌ Failed to connect to Milvus")
+            return False
+        
+        # Create collection and index
+        logger.info("🏗️ Creating collection...")
+        if not store.create_collection():
+            logger.error("❌ Failed to create collection")
+            return False
+        
+        logger.info("🔍 Creating index...")
+        if not store.create_index():
+            logger.error("❌ Failed to create index")
+            return False
+        
+        # Convert and upload chunks
+        logger.info("🔄 Converting chunks to Milvus format...")
+        milvus_chunks = []
+        for chunk in chunks_with_embeddings:
+            milvus_chunks.append({
+                "chunk_id": chunk["chunk_id"],
+                "doc_id": chunk["doc_id"],
+                "content": chunk["content"][:65535],  # Milvus string limit
+                "word_count": chunk["word_count"],
+                "section_path": str(chunk.get("section_path", "")),
+                "embedding": chunk["embedding"]
+            })
+        
+        # Upload in batches
+        batch_size = 200
+        total_uploaded = 0
+        
+        for i in range(0, len(milvus_chunks), batch_size):
+            batch = milvus_chunks[i:i + batch_size]
+            batch_num = (i // batch_size) + 1
+            total_batches = (len(milvus_chunks) + batch_size - 1) // batch_size
+            
+            logger.info(f"📤 Uploading batch {batch_num}/{total_batches}: {len(batch)} chunks")
+            
+            success = store.insert_chunks(batch)
+            if success:
+                total_uploaded += len(batch)
+            else:
+                logger.error(f"❌ Failed to upload batch {batch_num}")
+                return False
+        
+        # Get final collection stats
+        entity_count = store.get_entity_count()
+        logger.info(f"🎯 Upload complete! {total_uploaded} chunks uploaded")
+        logger.info(f"📊 Collection now contains {entity_count:,} entities")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error during Milvus upload: {str(e)}")
+        return False
+    finally:
+        # Cleanup connection
+        if 'store' in locals() and hasattr(store, 'disconnect'):
+            store.disconnect()
 
 
 def main():
@@ -576,6 +873,41 @@ def main():
         action="store_true", 
         help="Only clear cache and exit (don't process documents)"
     )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Skip OpenAI API key setup and disable LLM metadata generation"
+    )
+    parser.add_argument(
+        "--require-llm",
+        action="store_true", 
+        help="Require OpenAI API key for LLM metadata generation (prompt if not available)"
+    )
+    parser.add_argument(
+        "--clear-milvus",
+        action="store_true",
+        help="Clear all embeddings from Milvus before processing"
+    )
+    parser.add_argument(
+        "--drop-milvus",
+        action="store_true", 
+        help="Drop entire Milvus collection before processing (more thorough than --clear-milvus)"
+    )
+    parser.add_argument(
+        "--confirm-milvus-cleanup",
+        action="store_true",
+        help="Skip confirmation prompt for Milvus cleanup operations"
+    )
+    parser.add_argument(
+        "--skip-milvus-upload",
+        action="store_true",
+        help="Skip automatic upload of embeddings to Milvus vector store"
+    )
+    parser.add_argument(
+        "--milvus-config",
+        default="production",
+        help="Milvus configuration type to use (default: production)"
+    )
     
     args = parser.parse_args()
     
@@ -597,12 +929,75 @@ def main():
         logger.info("Cache cleared. Exiting (--cache-only specified).")
         return
     
+    # Handle Milvus cleanup
+    if args.clear_milvus or args.drop_milvus:
+        logger.info("🧹 Milvus cleanup requested...")
+        
+        try:
+            if args.drop_milvus:
+                logger.info("🗑️  Dropping entire Milvus collection...")
+                success = drop_milvus_collection("production", confirm=args.confirm_milvus_cleanup)
+                if success:
+                    logger.info("✅ Successfully dropped Milvus collection")
+                else:
+                    logger.error("❌ Failed to drop Milvus collection")
+                    if not args.confirm_milvus_cleanup:
+                        response = input("Continue processing anyway? (y/N): ").strip().lower()
+                        if response != 'y':
+                            logger.info("Processing cancelled by user")
+                            return
+            
+            elif args.clear_milvus:
+                logger.info("🧽 Clearing Milvus collection data...")
+                success = clear_milvus_collection("production", confirm=args.confirm_milvus_cleanup)
+                if success:
+                    logger.info("✅ Successfully cleared Milvus collection")
+                else:
+                    logger.error("❌ Failed to clear Milvus collection")
+                    if not args.confirm_milvus_cleanup:
+                        response = input("Continue processing anyway? (y/N): ").strip().lower()
+                        if response != 'y':
+                            logger.info("Processing cancelled by user")
+                            return
+                            
+        except Exception as e:
+            logger.error(f"❌ Error during Milvus cleanup: {e}")
+            if not args.confirm_milvus_cleanup:
+                response = input("Continue processing anyway? (y/N): ").strip().lower()
+                if response != 'y':
+                    logger.info("Processing cancelled due to cleanup error")
+                    return
+    
     logger.info("Starting Graph-RAG Document Processing Pipeline")
     logger.info(f"Input directory: {args.input_dir}")
     logger.info(f"Output directory: {args.output_dir}")
     
+    # Setup OpenAI API key for enhanced metadata generation
+    llm_available = False
+    if not args.no_llm:
+        logger.info("🤖 Setting up LLM integration for enhanced table metadata...")
+        logger.info("🏷️  This will generate table titles, summaries, and classifications")
+        
+        # Try to setup API key, but don't fail if unavailable
+        if args.require_llm:
+            logger.info("🔑 API key required (--require-llm flag)")
+            llm_available = setup_openai_api_key(require_key=True)
+            if not llm_available:
+                logger.error("❌ LLM integration required but API key setup failed.")
+                logger.info("💡 Remove --require-llm flag to continue without LLM features.")
+                return
+        else:
+            llm_available = setup_openai_api_key(require_key=False)
+            
+        if llm_available:
+            logger.info("✅ LLM integration enabled - tables will get enhanced metadata")
+        else:
+            logger.info("📋 LLM unavailable - tables will use basic metadata only")
+    else:
+        logger.info("🚫 LLM integration disabled (--no-llm flag)")
+    
     # Initialize processor
-    processor = DocumentProcessor(input_dir=args.input_dir, use_cache=not args.clear_cache)
+    processor = DocumentProcessor(input_dir=args.input_dir, use_cache=not args.clear_cache, enable_llm=llm_available)
     
     # Process all documents
     chunks = processor.process_all_documents()
@@ -632,6 +1027,35 @@ def main():
             "embedding": chunk.embedding if hasattr(chunk, 'embedding') and chunk.embedding else None,
             "embedding_dim": len(chunk.embedding) if hasattr(chunk, 'embedding') and chunk.embedding else 0
         }
+        
+        # Add optional metadata fields if present
+        if chunk.metadata.page is not None:
+            chunk_data["page"] = chunk.metadata.page
+            
+        # Add lists if not empty
+        if chunk.metadata.outbound_refs:
+            chunk_data["outbound_refs"] = [ref.model_dump() for ref in chunk.metadata.outbound_refs]
+        if chunk.metadata.inbound_refs:
+            chunk_data["inbound_refs"] = chunk.metadata.inbound_refs
+        if chunk.metadata.regions:
+            chunk_data["regions"] = chunk.metadata.regions
+        if chunk.metadata.metrics:
+            chunk_data["metrics"] = chunk.metadata.metrics
+        if chunk.metadata.time_periods:
+            chunk_data["time_periods"] = chunk.metadata.time_periods
+        if chunk.metadata.dates:
+            chunk_data["dates"] = chunk.metadata.dates
+            
+        # Add table-specific metadata for table chunks
+        if chunk.metadata.chunk_type == "table":
+            if chunk.metadata.table_id:
+                chunk_data["table_id"] = chunk.metadata.table_id
+            if chunk.metadata.column_headers:
+                chunk_data["column_headers"] = chunk.metadata.column_headers
+            if chunk.metadata.table_title:
+                chunk_data["table_title"] = chunk.metadata.table_title
+            if chunk.metadata.table_caption:
+                chunk_data["table_caption"] = chunk.metadata.table_caption
         chunks_data.append(chunk_data)
     
     with open(chunks_file, 'w', encoding='utf-8') as f:
@@ -665,6 +1089,20 @@ def main():
     logger.info(f"Processing complete!")
     logger.info(f"Chunks saved to: {chunks_file}")
     logger.info(f"Summary saved to: {summary_file}")
+    
+    # Upload to Milvus vector store
+    if not args.skip_milvus_upload and len(chunks) > 0:
+        logger.info("📤 Uploading embeddings to Milvus vector store...")
+        upload_success = upload_to_milvus(chunks_file, args.milvus_config)
+        if upload_success:
+            logger.info("✅ Successfully uploaded embeddings to Milvus")
+        else:
+            logger.warning("⚠️ Failed to upload embeddings to Milvus - continuing anyway")
+    elif args.skip_milvus_upload:
+        logger.info("🚫 Skipping Milvus upload (--skip-milvus-upload flag)")
+    elif len(chunks) == 0:
+        logger.warning("⚠️ No chunks to upload to Milvus")
+    
     logger.info(f"Generated {len(chunks)} chunks with full pipeline processing")
     logger.info(f"Total non-API tokens: {processor.token_tracker.get_total():,}")
     if processor.token_tracker.get_openai_total() > 0:
