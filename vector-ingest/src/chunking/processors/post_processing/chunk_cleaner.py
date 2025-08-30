@@ -1,15 +1,11 @@
 import re
 from typing import List
-from pathlib import Path
-
-from .base import BaseFileProcessor
 
 
-class TextPreprocessor(BaseFileProcessor):
-    """Clean and preprocess document content removing artifacts and noise."""
+class ChunkCleaner:
+    """Clean and post-process text chunks removing artifacts and noise."""
     
     def __init__(self):
-        # Compile regex patterns once for efficiency
         self._compile_patterns()
     
     def _compile_patterns(self):
@@ -42,8 +38,8 @@ class TextPreprocessor(BaseFileProcessor):
         ]
         self.noise_regex = re.compile('|'.join(noise_patterns), re.MULTILINE)
     
-    def clean_content(self, content: str) -> str:
-        """Main preprocessing method to clean content efficiently."""
+    def clean_chunk(self, content: str) -> str:
+        """Clean a text chunk removing artifacts and noise."""
         if not content or not content.strip():
             return ""
         
@@ -82,47 +78,3 @@ class TextPreprocessor(BaseFileProcessor):
         content = self.multi_newline_regex.sub('\n\n', content)
         
         return content.strip()
-    
-    
-    def process_file(self, file_path: Path) -> str:
-        """Read and preprocess a single file (BaseFileProcessor interface)."""
-        return self.preprocess_file(file_path)
-    
-    def supports_file_type(self, file_path: Path) -> bool:
-        """Check if file type is supported for preprocessing."""
-        supported_exts = {'.txt', '.md', '.html', '.htm'}
-        return file_path.suffix.lower() in supported_exts
-    
-    def preprocess_file(self, file_path: Path) -> str:
-        """Read and preprocess a single file."""
-        if not self.supports_file_type(file_path):
-            raise ValueError(f"Unsupported file type: {file_path.suffix}")
-            
-        try:
-            # Handle different encodings efficiently
-            encodings = ['utf-8', 'utf-8-sig', 'latin1', 'cp1252']
-            
-            for encoding in encodings:
-                try:
-                    content = file_path.read_text(encoding=encoding)
-                    return self.clean_content(content)
-                except UnicodeDecodeError:
-                    continue
-            
-            # Fallback with error handling
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            return self.clean_content(content)
-            
-        except Exception as e:
-            raise ValueError(f"Failed to read file {file_path}: {str(e)}")
-    
-    def discover_input_files(self, input_dir: Path) -> List[Path]:
-        """Discover all supported files in input directory."""
-        if not input_dir.exists():
-            return []
-        
-        # Use iterdir() with supports_file_type() for consistency
-        files = [f for f in input_dir.iterdir() 
-                if f.is_file() and self.supports_file_type(f)]
-        
-        return sorted(files)

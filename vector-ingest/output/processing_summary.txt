@@ -1,0 +1,59 @@
+Graph-RAG Document Processing Results
+==================================================
+
+Total chunks generated: 226
+Chunks with embeddings: 226
+Average words per chunk: 725.8
+Total tokens processed: 853,716
+
+Chunk ID: Form 10-K 2022_chunk_1
+Document: Form 10-K 2022
+Word count: 748
+Has embedding: Yes
+Section info: People: ACT OF, AND EXCHANGE, ANNUAL REPORT
+Content preview: ## UNITED STATES SECURITIES AND EXCHANGE COMMISSION
+
+Washington, D.C. 20549
+
+\_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_
+
+\_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_ \_...
+--------------------------------------------------
+
+Chunk ID: Form 10-K 2022_chunk_2
+Document: Form 10-K 2022
+Word count: 702
+Has embedding: Yes
+Section info: People: About Market, Accounting Fees, Act Large
+Content preview: Yes ☒ No ☐
+
+Indicate by check mark whether the registrant has submitted electronically every Interactive Data File required to be submitted pursuant to Rule 405 of Regulation S-T (§232.405 of this cha...
+--------------------------------------------------
+
+Chunk ID: Form 10-K 2022_chunk_3
+Document: Form 10-K 2022
+Word count: 242
+Has embedding: Yes
+Section info: People: Annual Report, Exchange Act, Note Regarding
+Content preview: All information presented herein is based on our fiscal calendar. Unless otherwise stated, references to particular years, quarters, months or periods refer to the Company's fiscal years ended April 3...
+--------------------------------------------------
+
+Chunk ID: Form 10-K 2022_chunk_4
+Document: Form 10-K 2022
+Word count: 708
+Has embedding: Yes
+Section info: People: Annual Report, United States
+Content preview: Forward-looking statements contained in this Annual Report on Form 10-K include, but are not limited to, statements about:
+
+- our future financial performance, including our expectations regarding our...
+--------------------------------------------------
+
+Chunk ID: Form 10-K 2022_chunk_5
+Document: Form 10-K 2022
+Word count: 727
+Has embedding: Yes
+Section info: People: Annual Report, BUSINESS Elastic, Cloud Platform
+Content preview: These statements are inherently uncertain and investors are cautioned not to unduly rely upon these statements. You should not rely upon forward-looking statements as predictions of future events. We ...
+--------------------------------------------------
+
+... and 221 more chunks

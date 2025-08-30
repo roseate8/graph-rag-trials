@@ -1,7 +1,7 @@
 from typing import List
 from sentence_transformers import SentenceTransformer
 
-from .models import Chunk
+from ..chunking.models import Chunk
 
 
 class EmbeddingService:

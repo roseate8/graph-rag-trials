@@ -9,7 +9,12 @@
       "Bash(pip install:*)",
       "Bash(python -m pytest ../tests/ -v)",
       "Bash(python test:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(move:*)",
+      "Bash(timeout 30 python:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []
