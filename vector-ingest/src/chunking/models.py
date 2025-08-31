@@ -2,6 +2,28 @@ from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
 
+class StructuralMetadata(BaseModel):
+    """Pydantic version of structural metadata for document chunks."""
+    element_type: Optional[str] = None
+    element_level: int = 0
+    page_number: Optional[int] = None
+    bbox_coords: Optional[Dict[str, float]] = None
+    is_heading: bool = False
+    matching_method: str = "none"
+    matching_confidence: float = 0.0
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in {
+            'element_type': self.element_type,
+            'element_level': self.element_level if self.element_level > 0 else None,
+            'page_number': self.page_number,
+            'bbox_coords': self.bbox_coords,
+            'is_heading': self.is_heading if self.is_heading else None,
+            'matching_method': self.matching_method,
+            'matching_confidence': self.matching_confidence
+        }.items() if v is not None}
+
+
 class DocumentMetadata(BaseModel):
     doc_id: str
     title: Optional[str] = None
@@ -41,6 +63,9 @@ class ChunkMetadata(BaseModel):
     column_headers: List[str] = Field(default_factory=list)
     table_title: Optional[str] = None
     table_caption: Optional[str] = None
+    
+    # Structural metadata (Phase 1 enrichment)
+    structural_metadata: Optional[StructuralMetadata] = None
 
 
 class Chunk(BaseModel):
