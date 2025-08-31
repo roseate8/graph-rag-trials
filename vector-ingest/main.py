@@ -18,7 +18,7 @@ import argparse
 # Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
-from src.chunking.models import Chunk, DocumentMetadata, DocumentStructure, ChunkMetadata
+from src.chunking.models import Chunk, DocumentMetadata, DocumentStructure, ChunkMetadata, StructuralMetadata
 from src.chunking.processors.toc_detector import TableOfContentsDetector
 from src.chunking.processors.text_chunker import TextChunker
 from src.chunking.processors import PostProcessor, ChunkCleaner, TableProcessor
@@ -149,12 +149,30 @@ class DocumentProcessor:
                 
             chunks = []
             for chunk_data in cache_data.get('chunks', []):
+                # Load basic metadata fields
+                cached_meta = chunk_data['metadata']
                 metadata = ChunkMetadata(
-                    chunk_id=chunk_data['metadata']['chunk_id'],
-                    doc_id=chunk_data['metadata']['doc_id'],
-                    chunk_type=chunk_data['metadata']['chunk_type'],
-                    word_count=chunk_data['metadata']['word_count'],
-                    section_path=chunk_data['metadata'].get('section_path', [])
+                    chunk_id=cached_meta['chunk_id'],
+                    doc_id=cached_meta['doc_id'],
+                    chunk_type=cached_meta['chunk_type'],
+                    word_count=cached_meta['word_count'],
+                    section_path=cached_meta.get('section_path', []),
+                    page=cached_meta.get('page'),
+                    
+                    # Load entity fields
+                    regions=cached_meta.get('regions', []),
+                    metrics=cached_meta.get('metrics', []),
+                    time_periods=cached_meta.get('time_periods', []),
+                    dates=cached_meta.get('dates', []),
+                    
+                    # Load table-specific fields
+                    table_id=cached_meta.get('table_id'),
+                    column_headers=cached_meta.get('column_headers', []),
+                    table_title=cached_meta.get('table_title'),
+                    table_caption=cached_meta.get('table_caption'),
+                    
+                    # Load structural metadata if present
+                    structural_metadata=StructuralMetadata(**cached_meta['structural_metadata']) if cached_meta.get('structural_metadata') else None
                 )
                 
                 chunk = Chunk(metadata=metadata, content=chunk_data['content'])
@@ -219,6 +237,10 @@ class DocumentProcessor:
                         metadata['table_title'] = chunk.metadata.table_title
                     if chunk.metadata.table_caption:
                         metadata['table_caption'] = chunk.metadata.table_caption
+                
+                # Add structural metadata if present
+                if hasattr(chunk.metadata, 'structural_metadata') and chunk.metadata.structural_metadata:
+                    metadata['structural_metadata'] = chunk.metadata.structural_metadata.model_dump()
                 
                 chunk_data = {
                     'content': chunk.content,
@@ -397,9 +419,22 @@ class DocumentProcessor:
         logger.info("🏷️  Extracting entities...")
         chunks_with_entities = self._extract_entities(all_chunks)
         
-        # 8. Generate embeddings
+        # 8. Enrich with structural metadata (Phase 1)
+        logger.info("🏗️  Enriching with structural metadata...")
+        from src.chunking.metadata_enrichment import enrich_chunks_with_structure
+        json_file_path = file_path.with_suffix('.json') if file_path else None
+        json_content = None
+        if json_file_path and json_file_path.exists():
+            try:
+                with open(json_file_path, 'r', encoding='utf-8') as f:
+                    json_content = f.read()
+            except Exception as e:
+                logger.debug(f"Failed to read JSON file: {e}")
+        enriched_chunks = enrich_chunks_with_structure(chunks_with_entities, {'doc_id': metadata.doc_id, 'document_structure': structure, 'md_content': cleaned_content, 'json_content': json_content})
+        
+        # 9. Generate embeddings
         logger.info("🔮 Generating embeddings...")
-        final_chunks = self._generate_embeddings(chunks_with_entities)
+        final_chunks = self._generate_embeddings(enriched_chunks)
         
         return final_chunks
     
@@ -634,22 +669,38 @@ class DocumentProcessor:
             # Extract entities from content
             entities = self.entity_extractor.process(chunk.content)
             
-            # Add entities to chunk metadata (extend ChunkMetadata if needed)
-            if hasattr(chunk.metadata, 'entities'):
-                chunk.metadata.entities = entities
-            # For now, we can store in section_path or create a simple string representation
-            if entities.get('people') or entities.get('organizations') or entities.get('dates'):
+            # Pre-extract entity lists once to avoid repeated dict lookups
+            people = entities.get('people')
+            organizations = entities.get('organizations') 
+            dates = entities.get('dates')
+            time_periods = entities.get('time_periods')
+            regions = entities.get('regions')
+            metrics = entities.get('metrics')
+            
+            # Populate dedicated metadata fields correctly
+            if regions:
+                chunk.metadata.regions.extend(list(regions)[:5])
+            if metrics:
+                chunk.metadata.metrics.extend(list(metrics)[:5])
+            if dates:
+                chunk.metadata.dates.extend(list(dates)[:5])
+            if time_periods:
+                chunk.metadata.time_periods.extend(list(time_periods)[:5])
+            
+            # Create section_path summary only if needed and entities exist
+            if people or organizations or dates:
                 entity_info = []
-                if entities.get('people'):
-                    entity_info.append(f"People: {', '.join(list(entities['people'])[:3])}")
-                if entities.get('organizations'):
-                    entity_info.append(f"Orgs: {', '.join(list(entities['organizations'])[:3])}")
-                if entities.get('dates'):
-                    entity_info.append(f"Dates: {', '.join(list(entities['dates'])[:3])}")
+                # Build strings efficiently with slice and join in one operation
+                if people:
+                    entity_info.append(f"People: {', '.join(list(people)[:3])}")
+                if organizations:
+                    entity_info.append(f"Orgs: {', '.join(list(organizations)[:3])}")
+                if dates:
+                    entity_info.append(f"Dates: {', '.join(list(dates)[:3])}")
                 
-                # Add to section_path for now (since that's what we have in ChunkMetadata)
-                if not chunk.metadata.section_path:
-                    chunk.metadata.section_path = entity_info[:1]  # Just take first for brevity
+                # Set section_path if not already set and we have entity info
+                if not chunk.metadata.section_path and entity_info:
+                    chunk.metadata.section_path = [entity_info[0]]  # Single element list
         
         logger.info(f"🏷️  Extracted entities for {len(chunks)} chunks")
         return chunks
@@ -659,8 +710,10 @@ class DocumentProcessor:
         if not chunks:
             return chunks
         
-        # Track embedding tokens (approximate - embeddings process the text)
-        embedding_tokens = sum(self.token_tracker.estimate_tokens(chunk.content) for chunk in chunks)
+        # Optimized token estimation (avoid generator expression overhead)
+        embedding_tokens = 0
+        for chunk in chunks:
+            embedding_tokens += self.token_tracker.estimate_tokens(chunk.content)
         self.token_tracker.add_embedding_tokens(embedding_tokens)
         
         # Generate embeddings using EmbeddingService
@@ -798,16 +851,40 @@ def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool
         
         # Convert and upload chunks
         logger.info("🔄 Converting chunks to Milvus format...")
-        milvus_chunks = []
-        for chunk in chunks_with_embeddings:
-            milvus_chunks.append({
-                "chunk_id": chunk["chunk_id"],
-                "doc_id": chunk["doc_id"],
-                "content": chunk["content"][:65535],  # Milvus string limit
-                "word_count": chunk["word_count"],
-                "section_path": str(chunk.get("section_path", "")),
-                "embedding": chunk["embedding"]
-            })
+        
+        # Pre-allocate list and define core fields once
+        chunk_count = len(chunks_with_embeddings)
+        milvus_chunks = [None] * chunk_count
+        core_fields = {"chunk_id", "doc_id", "content", "word_count", "section_path", "embedding"}
+        extended_field_count = 0
+        
+        for i, chunk in enumerate(chunks_with_embeddings):
+            # Create milvus_chunk by copying all fields, then handle special cases
+            milvus_chunk = dict(chunk)  # O(1) dict copy vs O(n) field-by-field
+            
+            # Apply transformations in-place
+            milvus_chunk["content"] = chunk["content"][:65535]  # Truncate efficiently
+            milvus_chunk["section_path"] = str(chunk.get("section_path", ""))
+            
+            # Convert complex types to JSON strings (only check non-core fields)
+            chunk_extended_fields = 0
+            for key, value in chunk.items():
+                if key not in core_fields:
+                    chunk_extended_fields += 1
+                    if isinstance(value, (list, dict)):
+                        milvus_chunk[key] = json.dumps(value, ensure_ascii=False)
+                    elif not isinstance(value, (str, int, float, bool)) and value is not None:
+                        milvus_chunk[key] = str(value)
+            
+            milvus_chunks[i] = milvus_chunk
+            
+            if chunk_extended_fields > 0:
+                extended_field_count += 1
+                if i < 2:  # Log first 2 chunks with extended fields
+                    extended_keys = [k for k in chunk.keys() if k not in core_fields]
+                    logger.info(f"📊 Chunk {i+1} has {chunk_extended_fields} extended fields: {extended_keys}")
+        
+        logger.info(f"📊 {extended_field_count}/{chunk_count} chunks have extended metadata")
         
         # Upload in batches
         batch_size = 200
@@ -1028,34 +1105,51 @@ def main():
             "embedding_dim": len(chunk.embedding) if hasattr(chunk, 'embedding') and chunk.embedding else 0
         }
         
+        # Cache metadata reference to avoid repeated attribute access
+        metadata = chunk.metadata
+        
         # Add optional metadata fields if present
-        if chunk.metadata.page is not None:
-            chunk_data["page"] = chunk.metadata.page
+        if metadata.page is not None:
+            chunk_data["page"] = metadata.page
             
-        # Add lists if not empty
-        if chunk.metadata.outbound_refs:
-            chunk_data["outbound_refs"] = [ref.model_dump() for ref in chunk.metadata.outbound_refs]
-        if chunk.metadata.inbound_refs:
-            chunk_data["inbound_refs"] = chunk.metadata.inbound_refs
-        if chunk.metadata.regions:
-            chunk_data["regions"] = chunk.metadata.regions
-        if chunk.metadata.metrics:
-            chunk_data["metrics"] = chunk.metadata.metrics
-        if chunk.metadata.time_periods:
-            chunk_data["time_periods"] = chunk.metadata.time_periods
-        if chunk.metadata.dates:
-            chunk_data["dates"] = chunk.metadata.dates
+        # Batch process list fields with single attribute access
+        list_fields = [
+            ("outbound_refs", [ref.model_dump() for ref in metadata.outbound_refs] if metadata.outbound_refs else None),
+            ("inbound_refs", metadata.inbound_refs if metadata.inbound_refs else None),
+            ("regions", metadata.regions if metadata.regions else None),
+            ("metrics", metadata.metrics if metadata.metrics else None),
+            ("time_periods", metadata.time_periods if metadata.time_periods else None),
+            ("dates", metadata.dates if metadata.dates else None)
+        ]
+        
+        # Add non-empty lists in single loop
+        for field_name, field_value in list_fields:
+            if field_value:
+                chunk_data[field_name] = field_value
             
         # Add table-specific metadata for table chunks
-        if chunk.metadata.chunk_type == "table":
-            if chunk.metadata.table_id:
-                chunk_data["table_id"] = chunk.metadata.table_id
-            if chunk.metadata.column_headers:
-                chunk_data["column_headers"] = chunk.metadata.column_headers
-            if chunk.metadata.table_title:
-                chunk_data["table_title"] = chunk.metadata.table_title
-            if chunk.metadata.table_caption:
-                chunk_data["table_caption"] = chunk.metadata.table_caption
+        if metadata.chunk_type == "table":
+            table_fields = [
+                ("table_id", metadata.table_id),
+                ("column_headers", metadata.column_headers), 
+                ("table_title", metadata.table_title),
+                ("table_caption", metadata.table_caption)
+            ]
+            
+            for field_name, field_value in table_fields:
+                if field_value:
+                    chunk_data[field_name] = field_value
+        
+        # Add Phase 1 structural metadata if present
+        if hasattr(chunk.metadata, 'structural_metadata') and chunk.metadata.structural_metadata:
+            chunk_data["structural_metadata"] = {
+                "element_type": chunk.metadata.structural_metadata.element_type,
+                "element_level": chunk.metadata.structural_metadata.element_level,
+                "page_number": chunk.metadata.structural_metadata.page_number,
+                "bbox_coords": chunk.metadata.structural_metadata.bbox_coords,
+                "is_heading": chunk.metadata.structural_metadata.is_heading
+            }
+        
         chunks_data.append(chunk_data)
     
     with open(chunks_file, 'w', encoding='utf-8') as f:

@@ -233,43 +233,75 @@ class MilvusVectorStore:
             return True
         
         try:
-            # Pre-allocate lists for better memory efficiency - O(n) space, O(1) amortized append
+            # Core schema fields (order matters for column format)
+            core_fields = ["chunk_id", "doc_id", "content", "word_count", "section_path", "embedding"]
+            
+            # Detect dynamic fields from all chunks (not just first one)
+            dynamic_fields = set()
+            for chunk in chunks:
+                chunk_dynamic_fields = [key for key in chunk.keys() if key not in core_fields]
+                dynamic_fields.update(chunk_dynamic_fields)
+            
+            dynamic_fields = list(dynamic_fields)
+            if dynamic_fields:
+                logger.info(f"Detected {len(dynamic_fields)} dynamic fields: {dynamic_fields}")
+            
             chunk_count = len(chunks)
-            chunk_ids = []
-            doc_ids = []
-            contents = []
-            word_counts = []
-            section_paths = []
-            embeddings = []
             
-            # Reserve capacity to avoid repeated allocations
-            chunk_ids.extend([""] * chunk_count)
-            doc_ids.extend([""] * chunk_count) 
-            contents.extend([""] * chunk_count)
-            word_counts.extend([0] * chunk_count)
-            section_paths.extend([""] * chunk_count)
-            embeddings.extend([None] * chunk_count)
-            
-            # Single pass through chunks - O(n) time complexity
-            expected_dim = self.config.embedding_dim
-            for i, chunk in enumerate(chunks):
-                chunk_ids[i] = chunk["chunk_id"]
-                doc_ids[i] = chunk["doc_id"]
-                contents[i] = chunk["content"][:65535]  # Truncate efficiently
-                word_counts[i] = chunk["word_count"]
-                section_paths[i] = str(chunk.get("section_path", ""))
+            if dynamic_fields:
+                # For dynamic fields, use row-based format (list of dicts)
+                data = []
+                expected_dim = self.config.embedding_dim
                 
-                embedding = chunk["embedding"]
-                # Fast dimension check without enumerate - O(1) vs O(n)
-                if len(embedding) != expected_dim:
-                    raise ValueError(
-                        f"Embedding dimension mismatch at index {i}: "
-                        f"expected {expected_dim}, got {len(embedding)}"
-                    )
-                embeddings[i] = embedding
-            
-            # Prepare data array - column format for Milvus
-            data = [chunk_ids, doc_ids, contents, word_counts, section_paths, embeddings]
+                for chunk in chunks:
+                    # Validate embedding dimension
+                    embedding = chunk["embedding"]
+                    if len(embedding) != expected_dim:
+                        raise ValueError(
+                            f"Embedding dimension mismatch: expected {expected_dim}, got {len(embedding)}"
+                        )
+                    
+                    # Create row with all fields (core + dynamic)
+                    row = {
+                        "chunk_id": chunk["chunk_id"],
+                        "doc_id": chunk["doc_id"],
+                        "content": chunk["content"][:65535],
+                        "word_count": chunk["word_count"],
+                        "section_path": str(chunk.get("section_path", "")),
+                        "embedding": embedding
+                    }
+                    
+                    # Add dynamic fields to the row
+                    for field in dynamic_fields:
+                        row[field] = chunk.get(field)
+                    
+                    data.append(row)
+            else:
+                # For core-only fields, use column format for efficiency
+                chunk_ids = [""] * chunk_count
+                doc_ids = [""] * chunk_count
+                contents = [""] * chunk_count
+                word_counts = [0] * chunk_count
+                section_paths = [""] * chunk_count
+                embeddings = [None] * chunk_count
+                
+                expected_dim = self.config.embedding_dim
+                for i, chunk in enumerate(chunks):
+                    chunk_ids[i] = chunk["chunk_id"]
+                    doc_ids[i] = chunk["doc_id"]
+                    contents[i] = chunk["content"][:65535]
+                    word_counts[i] = chunk["word_count"]
+                    section_paths[i] = str(chunk.get("section_path", ""))
+                    
+                    embedding = chunk["embedding"]
+                    if len(embedding) != expected_dim:
+                        raise ValueError(
+                            f"Embedding dimension mismatch at index {i}: "
+                            f"expected {expected_dim}, got {len(embedding)}"
+                        )
+                    embeddings[i] = embedding
+                
+                data = [chunk_ids, doc_ids, contents, word_counts, section_paths, embeddings]
             
             # Insert data with optional flush
             insert_result = self.collection.insert(data)
@@ -277,7 +309,7 @@ class MilvusVectorStore:
             if flush:
                 self.collection.flush()
             
-            logger.info(f"Inserted {chunk_count} chunks into collection")
+            logger.info(f"Inserted {chunk_count} chunks into collection (core + {len(dynamic_fields)} dynamic fields)")
             return True
             
         except MilvusException as e:
