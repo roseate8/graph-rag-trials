@@ -1,10 +1,10 @@
 Graph-RAG Document Processing Results
 ==================================================
 
-Total chunks generated: 184
-Chunks with embeddings: 184
-Average words per chunk: 485.5
-Total tokens processed: 448,198
+Total chunks generated: 185
+Chunks with embeddings: 185
+Average words per chunk: 484.5
+Total tokens processed: 425,244
 
 Chunk ID: Form 10-K 2022_chunk_1
 Document: Form 10-K 2022
@@ -56,4 +56,4 @@ Section info: People: Annual Report, BUSINESS Elastic, Cloud Platform
 Content preview: These statements are inherently uncertain and investors are cautioned not to unduly rely upon these statements. You should not rely upon forward-looking statements as predictions of future events. We ...
 --------------------------------------------------
 
-... and 179 more chunks
+... and 180 more chunks

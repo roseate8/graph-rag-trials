@@ -36,6 +36,9 @@ class TableBoundary:
     content_sample: Optional[str] = None  # First few rows for MD matching
     headers: List[str] = None  # Column headers
     row_headers: List[str] = None  # Row headers
+    # Contextual metadata extracted from surrounding text elements
+    caption: Optional[str] = None  # Table title/caption from adjacent text
+    footnotes: List[str] = None  # Footnote text content
 
 
 @dataclass
@@ -51,118 +54,107 @@ class TableExtractionResult:
 
 
 class JSONTableDetector:
-    """Detects table boundaries from DoclingDocument JSON format."""
+    """Streamlined table detector with minimal overhead."""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__ + '.JSONTableDetector')
     
     def detect_table_boundaries(self, json_data: Dict[str, Any]) -> List[TableBoundary]:
-        """Extract table boundary information from DoclingDocument JSON."""
+        """Extract table boundaries with direct processing - no caching overhead."""
+        tables = json_data.get('tables', [])
+        if not tables:
+            return []
+        
+        self.logger.info(f"📊 Processing {len(tables)} tables...")
+        
+        # Simple caption lookup - build only when needed
+        text_lookup = {}
+        if 'texts' in json_data:
+            text_lookup = {
+                elem.get('self_ref'): elem.get('text', '').strip()
+                for elem in json_data['texts'] 
+                if elem.get('self_ref') and elem.get('text', '').strip()
+            }
+        
+        # Process tables efficiently
         boundaries = []
+        for i, table_data in enumerate(tables):
+            boundary = self._extract_boundary_simple(table_data, i, json_data, text_lookup)
+            if boundary:
+                boundaries.append(boundary)
         
-        self.logger.info("🔍 Starting JSON table boundary detection...")
-        
-        if 'tables' not in json_data:
-            self.logger.warning("❌ No 'tables' section found in JSON document")
-            return boundaries
-        
-        table_count = len(json_data['tables'])
-        self.logger.info(f"📊 Found {table_count} tables in JSON document")
-        
-        for i, table_data in enumerate(json_data['tables']):
-            try:
-                self.logger.debug(f"Processing table {i+1}/{table_count}...")
-                boundary = self._extract_boundary_info(table_data, i)
-                if boundary:
-                    boundaries.append(boundary)
-                    self.logger.info(f"✅ Table {i+1}: {boundary.table_id} ({boundary.num_rows}x{boundary.num_cols}) - {len(boundary.headers or [])} headers")
-                else:
-                    self.logger.warning(f"⚠️  Table {i+1}: Failed to extract boundary info")
-            except Exception as e:
-                self.logger.error(f"❌ Error extracting boundary for table {i+1}: {e}")
-        
-        self.logger.info(f"🎯 Successfully detected {len(boundaries)} table boundaries from JSON")
+        self.logger.info(f"🎯 Detected {len(boundaries)} table boundaries")
         return boundaries
     
-    def _extract_boundary_info(self, table_data: Dict, table_index: int) -> Optional[TableBoundary]:
-        """Extract boundary information from individual table in JSON."""
-        if 'data' not in table_data:
-            return None
-        
-        data = table_data['data']
-        if 'grid' not in data:
-            return None
-        
-        grid = data['grid']
+    def _extract_boundary_simple(self, table_data: Dict, table_index: int, json_data: Dict, text_lookup: Dict) -> Optional[TableBoundary]:
+        """Streamlined boundary extraction with minimal processing."""
+        grid = table_data.get('data', {}).get('grid', [])
         if not grid:
             return None
         
-        # Extract basic info
-        num_rows = data.get('num_rows', len(grid))
-        num_cols = data.get('num_cols', len(grid[0]) if grid else 0)
+        # Basic info
+        num_rows = len(grid)
+        num_cols = len(grid[0]) if grid else 0
+        table_id = table_data.get('self_ref', f"#/tables/{table_index}").replace('#/tables/', 'table_')
         
-        # Generate table ID
-        table_id = f"table_{table_index}"
-        if 'self_ref' in table_data:
-            table_id = table_data['self_ref'].replace('#/tables/', 'table_')
+        # Extract headers efficiently - single pass
+        headers = []
+        if grid and grid[0]:
+            for cell_data in grid[0]:
+                if cell_data and cell_data.get('text'):
+                    headers.append(cell_data['text'].strip())
         
-        # Extract column and row headers for matching
-        column_headers = []
-        row_headers = []
-        
-        for row_idx, row in enumerate(grid[:3]):  # First 3 rows for headers
-            for col_idx, cell_data in enumerate(row):
-                if not cell_data or not cell_data.get('text'):
-                    continue
-                    
-                text = cell_data['text'].strip()
-                if not text:
-                    continue
-                
-                # Column headers
-                if cell_data.get('column_header', False) or (row_idx == 0 and col_idx > 0):
-                    column_headers.append(text)
-                    
-                # Row headers (typically first column)
-                if cell_data.get('row_header', False) or (col_idx == 0 and row_idx > 0):
-                    row_headers.append(text)
-        
-        headers = column_headers  # Keep for backward compatibility
-        
-        # Create content sample for MD matching (first 2 rows)
-        content_sample = []
-        for row_idx, row in enumerate(grid[:2]):
-            row_texts = []
-            for cell_data in row:
-                if cell_data and 'text' in cell_data:
-                    row_texts.append(cell_data['text'].strip())
-                else:
-                    row_texts.append('')
-            if any(row_texts):  # Only add non-empty rows
-                content_sample.append(row_texts)
-        
-        # Extract bbox and page info if available
-        bbox = table_data.get('bbox')
+        # Extract page info
         prov = table_data.get('prov', [])
-        pages = set()
-        for p in prov:
-            if isinstance(p, dict) and 'page' in p:
-                pages.add(p['page'])
+        start_page = None
+        if prov and isinstance(prov[0], dict):
+            start_page = prov[0].get('page_no') or prov[0].get('page')
         
-        # Store both column and row headers
-        boundary = TableBoundary(
+        # Simple caption extraction - find preceding text with table keywords
+        caption = self._find_table_caption_simple(table_data, json_data, text_lookup)
+        
+        return TableBoundary(
             table_id=table_id,
-            start_page=min(pages) if pages else None,
-            end_page=max(pages) if pages else None,
-            bbox=bbox,
+            start_page=start_page,
+            end_page=start_page,  # Simplified
+            bbox=table_data.get('bbox'),
             num_rows=num_rows,
             num_cols=num_cols,
-            content_sample=content_sample,
-            headers=list(dict.fromkeys(column_headers)),  # Remove duplicates
-            row_headers=list(dict.fromkeys(row_headers)) if row_headers else None
+            content_sample=None,  # Not needed for direct conversion
+            headers=headers,
+            row_headers=None,  # Simplified
+            caption=caption,
+            footnotes=[]  # Simplified
         )
+    
+    def _find_table_caption_simple(self, table_data: Dict, json_data: Dict, text_lookup: Dict) -> Optional[str]:
+        """Simple caption extraction without complex caching."""
+        table_ref = table_data.get('self_ref')
+        if not table_ref:
+            return None
         
-        return boundary
+        # Find table in body children
+        children = json_data.get('body', {}).get('children', [])
+        table_idx = None
+        for i, child in enumerate(children):
+            if child.get('$ref') == table_ref:
+                table_idx = i
+                break
+        
+        if table_idx is None:
+            return None
+        
+        # Check 2 preceding elements for captions - be more specific
+        for i in range(max(0, table_idx - 2), table_idx):
+            if i >= len(children):
+                continue
+            child_ref = children[i].get('$ref', '')
+            text = text_lookup.get(child_ref, '')
+            # Only match actual table captions, not "Table of Contents" headers
+            if text and 'following table' in text.lower() and 'table of contents' not in text.lower():
+                return text
+        
+        return None
 
 
 class TableUnitDetector:
@@ -200,150 +192,6 @@ class TableUnitDetector:
         return units
 
 
-class MarkdownTableExtractor:
-    """Fast table extraction with preprocessing cache."""
-    
-    def __init__(self):
-        self.logger = logging.getLogger(__name__ + '.MarkdownTableExtractor')
-        self._cache = {'hash': None, 'indices': [], 'normalized': [], 'blocks': []}
-    
-    def _preprocess(self, md_content: str):
-        """Single-pass preprocessing for maximum efficiency."""
-        content_hash = hash(md_content)
-        if self._cache['hash'] == content_hash:
-            return
-        
-        lines = md_content.split('\n')
-        indices, normalized, blocks = [], [], []
-        current_block = []
-        
-        # Single pass through content
-        for i, line in enumerate(lines):
-            if '|' in line:
-                indices.append(i)
-                normalized.append([c.strip().lower() for c in line.split('|')[1:-1]])
-                
-                # Build table blocks simultaneously
-                if line.strip().startswith('|') and line.strip().endswith('|'):
-                    if not re.match(r'^\s*\|[\s\-\|]*\|\s*$', line):  # Skip separators
-                        current_block.append(line)
-                elif current_block:
-                    blocks.append(current_block)
-                    current_block = []
-            else:
-                normalized.append([])
-                if current_block:
-                    blocks.append(current_block)
-                    current_block = []
-        
-        # Add final block
-        if current_block:
-            blocks.append(current_block)
-        
-        self._cache = {'hash': content_hash, 'indices': indices, 'normalized': normalized, 'blocks': blocks, 'lines': lines}
-    
-    def extract_table_from_md(self, md_content: str, boundary: TableBoundary) -> TableExtractionResult:
-        """Streamlined table extraction with dual fallback strategy."""
-        self._preprocess(md_content)
-        
-        if not boundary.headers:
-            return self._create_result(boundary, "", "no_headers", 0.0)
-        
-        # Fast header-based matching
-        best_idx, confidence = self._find_best_match(boundary.headers)
-        if confidence > 0.7:
-            content = self._extract_table_content(best_idx, boundary.num_rows)
-            self.logger.info(f"✅ Content-based match for {boundary.table_id} (confidence: {confidence:.2f})")
-            return self._create_result(boundary, content, "content_match", confidence)
-        
-        # Pattern-based fallback
-        best_block, confidence = self._find_best_block(boundary)
-        if confidence > 0.5:
-            content = '\n'.join(best_block)
-            self.logger.info(f"✅ Pattern-based match for {boundary.table_id} (confidence: {confidence:.2f})")
-            return self._create_result(boundary, content, "md_pattern", confidence)
-        
-        self.logger.warning(f"❌ No match found for {boundary.table_id}")
-        return self._create_result(boundary, "", "failed", 0.0)
-    
-    def _find_best_match(self, headers: List[str]) -> tuple:
-        """Fast header matching using set operations."""
-        if not headers:
-            return -1, 0.0
-        
-        headers_lower = {h.lower() for h in headers}
-        best_idx, best_conf = -1, 0.0
-        
-        for idx in self._cache['indices']:
-            cells = set(self._cache['normalized'][idx])
-            if not cells:
-                continue
-            
-            matches = sum(1 for h in headers_lower if any(h in c or c in h for c in cells))
-            confidence = matches / len(headers)
-            
-            if confidence > best_conf:
-                best_conf = confidence
-                best_idx = idx
-        
-        return best_idx, best_conf
-    
-    def _find_best_block(self, boundary: TableBoundary) -> tuple:
-        """Fast block matching using size similarity."""
-        best_block, best_score = None, 0.0
-        
-        for block in self._cache['blocks']:
-            if not block:
-                continue
-            
-            rows, cols = len(block), len(block[0].split('|')) - 2
-            row_score = min(rows, boundary.num_rows) / max(rows, boundary.num_rows, 1)
-            col_score = min(cols, boundary.num_cols) / max(cols, boundary.num_cols, 1)
-            score = (row_score + col_score) / 2
-            
-            if score > best_score:
-                best_score, best_block = score, block
-        
-        return best_block or [], best_score
-    
-    def _extract_table_content(self, start_idx: int, expected_rows: int) -> str:
-        """Extract table lines efficiently."""
-        lines = self._cache['lines']
-        indices = self._cache['indices']
-        
-        # Find table boundaries
-        start = start_idx
-        for idx in reversed(indices):
-            if idx < start_idx and idx == start_idx - 1:
-                start = idx
-            else:
-                break
-        
-        # Collect consecutive table lines
-        result = []
-        for i in range(start, min(len(lines), start + expected_rows + 5)):
-            if '|' in lines[i]:
-                result.append(lines[i])
-            else:
-                break
-        
-        return '\n'.join(result)
-    
-    def _create_result(self, boundary: TableBoundary, content: str, method: str, confidence: float) -> TableExtractionResult:
-        """Helper to create extraction results."""
-        return TableExtractionResult(
-            table_id=boundary.table_id,
-            md_content=content,
-            boundary_info=boundary,
-            extraction_method=method,
-            confidence=confidence
-        )
-    
-    
-    
-    
-    
-    
 
 
 class LLMTableProcessor:
@@ -415,17 +263,17 @@ class LLMTableProcessor:
             self.logger.info(f"🤖 Generating LLM metadata for table {table_id} (~{input_token_estimate} input tokens)")
             
             prompt = f"""Analyze this table and provide:
-1. A concise title (3-8 words)
-2. A brief summary (max 30 words) 
-3. Classification (choose: financial, metrics, ratios, geographic, time_series, reference_data, other)
+1. A specific table name/heading (2-6 words, like "Revenue by Segment" or "Cash Flow Statement")
+2. A descriptive summary explaining what the table shows (35-50 words)
+3. Classification (choose: financial_statement, summary_kpi, fact_table, dimension_table, timeseries_table, pivot_matrix, list_table, form_like, other)
 
 Table:
 {truncated_table}
 
 Response format:
-Title: [your title]
-Summary: [your summary] 
-Classification: [your classification]"""
+Title: [specific table name]
+Summary: [what this table shows and contains]
+Classification: [category]"""
             
             api_key = get_openai_api_key()
             headers = {
@@ -550,27 +398,164 @@ Classification: [your classification]"""
 
 
 class TableChunker(BaseProcessor):
-    """Advanced table chunker using JSON detection + MD extraction strategy."""
+    """Direct JSON-to-markdown table chunker with contextual metadata extraction."""
     
     def __init__(self, 
                  max_rows_per_chunk: int = 200,
                  preserve_headers: bool = True,
                  generate_llm_metadata: bool = True,
-                 md_file_path: Optional[Path] = None):
+                 **kwargs):  # Accept md_file_path for backward compatibility but ignore it
         """Initialize table chunker with configuration."""
         self.max_rows_per_chunk = max_rows_per_chunk
         self.preserve_headers = preserve_headers
         self.generate_llm_metadata = generate_llm_metadata
-        self.md_file_path = md_file_path
         
         self.json_detector = JSONTableDetector()
-        self.md_extractor = MarkdownTableExtractor()
         self.llm_processor = LLMTableProcessor() if generate_llm_metadata else None
         
         self.logger = logging.getLogger(__name__ + '.TableChunker')
     
+    def _build_chunk_metadata(self, boundary: TableBoundary, doc_id: str, table_id: str, 
+                            word_count: int, final_title: Optional[str], 
+                            classification: Optional[str], part_info: Optional[str] = None, 
+                            folder_path: Optional[List[str]] = None) -> ChunkMetadata:
+        """Optimized shared metadata builder - caption now in content, not metadata."""
+        # Build chunk ID efficiently
+        chunk_id = f"{doc_id}_{table_id}{part_info}" if part_info else f"{doc_id}_{table_id}"
+        
+        # Create base metadata (no table_caption - it's now in content)
+        metadata = ChunkMetadata(
+            chunk_id=chunk_id,
+            doc_id=doc_id,
+            chunk_type="table",
+            word_count=word_count,
+            table_id=table_id,
+            column_headers=boundary.headers or [],
+            table_title=final_title,
+            # table_caption removed - now in chunk content
+            
+            # Add new required fields
+            table_shape={"rows": boundary.num_rows, "cols": boundary.num_cols},
+            product_version="v1",
+            folder_path=folder_path or []
+        )
+        
+        # Set classification-based section path
+        if classification:
+            section_base = f"Table: {classification}"
+            metadata.section_path = [f"{section_base}{part_info}" if part_info else section_base]
+        
+        # Set page information  
+        if boundary.start_page is not None:
+            metadata.page = boundary.start_page
+        
+        # Simple structural metadata for tables
+        from ..models import StructuralMetadata
+        metadata.structural_metadata = StructuralMetadata(
+            element_type="table",
+            page_number=boundary.start_page,
+            bbox_coords=boundary.bbox
+        )
+        
+        return metadata
+    
+    def _extract_table_heading_simple(self, caption: str) -> Optional[str]:
+        """Optimized heading extraction with minimal processing."""
+        if not caption:
+            return None
+        
+        caption_lower = caption.lower()
+        
+        # Fast string-based extraction instead of regex
+        if 'following table' in caption_lower:
+            # Find the verb and extract what comes after it
+            words = caption.split()
+            for i, word in enumerate(words):
+                if word.lower() in ('summarizes', 'shows', 'presents', 'provides', 'represents', 'sets'):
+                    # Take next 2-4 words after the verb
+                    start_idx = i + 1
+                    if word.lower() == 'sets' and i + 1 < len(words) and words[i + 1].lower() == 'forth':
+                        start_idx = i + 2  # Skip "sets forth"
+                    heading_words = words[start_idx:start_idx + 4]
+                    if heading_words:
+                        return ' '.join(w.capitalize() for w in heading_words[:3])
+        
+        return None
+    
+    def _create_fallback_summary(self, original_caption: str) -> str:
+        """Minimal summary cleanup - single pass."""
+        if not original_caption:
+            return ""
+        
+        # Quick cleanup and length limit in one operation
+        summary = original_caption.strip()
+        if summary.lower().startswith('the following table'):
+            summary = summary[20:]  # Remove "the following table" (20 chars)
+        
+        return summary[:100] if len(summary) <= 100 else summary[:100] + '...'
+    
+    def _build_table_chunk_content(self, title: Optional[str], caption: Optional[str], summary: Optional[str], table_content: str) -> str:
+        """Optimized content building with minimal allocations."""
+        parts = []
+        
+        # Build content parts efficiently - avoid multiple append calls
+        if title:
+            parts.extend([title, ""])
+        if caption:
+            parts.extend([caption, ""])
+        if summary and summary != caption:  # Avoid duplication
+            parts.extend([summary, ""])
+        
+        parts.append(table_content)
+        
+        # Single join operation
+        return '\n'.join(parts)
+    
+    def _convert_json_table_to_markdown(self, boundary: TableBoundary, json_data: Dict[str, Any]) -> str:
+        """Convert JSON table data directly to markdown - simple and reliable."""
+        # Find the table in JSON data
+        tables = json_data.get('tables', [])
+        
+        # Find our table by matching the table_id
+        table_index = int(boundary.table_id.replace('table_', '')) if 'table_' in boundary.table_id else 0
+        
+        if table_index >= len(tables):
+            return ""
+        
+        table_data = tables[table_index]
+        data = table_data.get('data', {})
+        grid = data.get('grid', [])
+        
+        if not grid:
+            return ""
+        
+        # Convert grid to markdown table
+        markdown_lines = []
+        
+        for row_idx, row in enumerate(grid):
+            row_cells = []
+            for cell_data in row:
+                if cell_data and 'text' in cell_data:
+                    cell_text = cell_data['text'].strip()
+                    # Escape pipes in cell content
+                    cell_text = cell_text.replace('|', '\\|')
+                    row_cells.append(cell_text)
+                else:
+                    row_cells.append('')
+            
+            # Create markdown table row
+            markdown_line = '| ' + ' | '.join(row_cells) + ' |'
+            markdown_lines.append(markdown_line)
+            
+            # Add separator after header row (first row)
+            if row_idx == 0:
+                separator = '|' + '|'.join(['---' for _ in row_cells]) + '|'
+                markdown_lines.append(separator)
+        
+        return '\n'.join(markdown_lines)
+    
     async def process(self, json_content: str, doc_id: str, **kwargs) -> List[Chunk]:
-        """Process using JSON detection + MD extraction strategy."""
+        """Process using direct JSON-to-markdown conversion strategy."""
         try:
             self.logger.info(f"🏢 Starting table processing for document: {doc_id}")
             
@@ -584,26 +569,13 @@ class TableChunker(BaseProcessor):
                 self.logger.info("❌ No tables detected in JSON - skipping table processing")
                 return []
             
-            # Load MD content if available
-            md_content = None
-            if self.md_file_path and self.md_file_path.exists():
-                try:
-                    md_content = self.md_file_path.read_text(encoding='utf-8')
-                    self.logger.info(f"📂 Loaded MD file: {self.md_file_path} ({len(md_content)} chars)")
-                except Exception as e:
-                    self.logger.error(f"❌ Failed to load MD file: {e}")
-            
-            if not md_content:
-                self.logger.error("❌ No MD content available - cannot extract tables")
-                return []
-            
-            # Extract and process each table
+            # Process each table directly from JSON data
             chunks = []
-            self.logger.info(f"🔄 Processing {len(boundaries)} table boundaries...")
+            self.logger.info(f"🔄 Processing {len(boundaries)} table boundaries with direct JSON conversion...")
             
             for i, boundary in enumerate(boundaries):
                 self.logger.info(f"Processing table {i+1}/{len(boundaries)}: {boundary.table_id}")
-                table_chunks = await self._process_table_boundary(boundary, md_content, doc_id)
+                table_chunks = await self._process_table_boundary(boundary, json_data, doc_id)
                 chunks.extend(table_chunks)
                 self.logger.debug(f"Table {boundary.table_id} generated {len(table_chunks)} chunks")
             
@@ -621,19 +593,28 @@ class TableChunker(BaseProcessor):
             self.logger.error(f"❌ Error processing tables for {doc_id}: {e}", exc_info=True)
             return []
     
-    async def _process_table_boundary(self, boundary: TableBoundary, md_content: str, doc_id: str) -> List[Chunk]:
-        """Process a table boundary by extracting from MD and chunking."""
-        # Extract table from MD using boundary info
-        extraction_result = self.md_extractor.extract_table_from_md(md_content, boundary)
+    async def _process_table_boundary(self, boundary: TableBoundary, json_data: Dict[str, Any], doc_id: str) -> List[Chunk]:
+        """Process a table boundary by converting JSON data directly to markdown."""
+        # Convert JSON table data directly to markdown - no complex extraction needed!
+        markdown_content = self._convert_json_table_to_markdown(boundary, json_data)
         
-        if not extraction_result.md_content or extraction_result.confidence < 0.3:
-            self.logger.warning(f"Failed to extract table {boundary.table_id} from MD (confidence: {extraction_result.confidence:.2f})")
+        if not markdown_content:
+            self.logger.warning(f"Failed to convert JSON table {boundary.table_id} to markdown")
             return []
         
-        self.logger.info(f"Extracted table {boundary.table_id} using {extraction_result.extraction_method} (confidence: {extraction_result.confidence:.2f})")
+        self.logger.info(f"Converted JSON table {boundary.table_id} to markdown ({len(markdown_content)} chars)")
+        
+        # Create a simple extraction result
+        extraction_result = TableExtractionResult(
+            table_id=boundary.table_id,
+            md_content=markdown_content,
+            boundary_info=boundary,
+            extraction_method="json_direct",
+            confidence=1.0
+        )
         
         # Determine chunking strategy based on table size
-        table_rows = len([line for line in extraction_result.md_content.split('\n') if '|' in line])
+        table_rows = len([line for line in markdown_content.split('\n') if '|' in line])
         
         if table_rows <= self.max_rows_per_chunk:
             # Single chunk
@@ -644,75 +625,49 @@ class TableChunker(BaseProcessor):
             return await self._create_multi_chunk_table(extraction_result, doc_id)
     
     async def _create_single_chunk(self, extraction_result: TableExtractionResult, doc_id: str) -> Optional[Chunk]:
-        """Create a single chunk for a complete table."""
+        """Optimized single chunk creation using shared metadata builder."""
         try:
             boundary = extraction_result.boundary_info
             table_id = boundary.table_id
             markdown_content = extraction_result.md_content
             
-            # Generate metadata using LLM if enabled
-            title = None
-            summary = None
-            classification = None
+            # Extract heading from original JSON caption (if available)
+            extracted_heading = self._extract_table_heading_simple(boundary.caption) if boundary.caption else None
             
+            # LLM metadata generation (if enabled)
+            llm_title, llm_summary, classification = None, None, None
             if self.llm_processor:
-                title, summary, classification = await self.llm_processor.generate_table_metadata(
+                llm_title, llm_summary, classification = await self.llm_processor.generate_table_metadata(
                     markdown_content, table_id
                 )
             
-            # Detect units per column using streamlined static method
-            header_cells = boundary.headers or []
-            units_per_column = TableUnitDetector.detect_units_per_column(header_cells)
+            # Proper mapping:
+            # table_title (heading) = extracted heading OR LLM title
+            # table_caption (summary) = LLM summary OR fallback description
+            final_title = extracted_heading or llm_title  # Short specific heading
             
-            # Create comprehensive table metadata
-            metadata = ChunkMetadata(
-                chunk_id=f"{doc_id}_{table_id}",
-                doc_id=doc_id,
-                chunk_type="table",
-                word_count=len(markdown_content.split()),
-                table_id=table_id,
-                column_headers=boundary.headers or [],
-                table_title=title,
-                table_caption=summary
+            # For summary: prefer LLM, fallback to a clean version of original caption
+            if llm_summary:
+                final_caption = llm_summary  # High-level LLM summary
+            elif boundary.caption:
+                # Create a clean summary from original caption (without redundant phrases)
+                final_caption = self._create_fallback_summary(boundary.caption)
+            else:
+                final_caption = None
+            
+            # Build enhanced chunk content with title + caption + summary + table
+            enhanced_content = self._build_table_chunk_content(
+                final_title, boundary.caption, final_caption, markdown_content
             )
             
-            # Add table-specific metadata to section_path and metrics
-            if classification:
-                metadata.section_path = [f"Table: {classification}"]
-                metadata.metrics.append(f"classification_{classification}")
-            
-            # Add row headers to metrics if available
-            if hasattr(boundary, 'row_headers') and boundary.row_headers:
-                metadata.metrics.extend([f"row_header_{i}_{header}" for i, header in enumerate(boundary.row_headers)])
-                metadata.metrics.append(f"row_headers_count_{len(boundary.row_headers)}")
-            
-            # Add table dimensions
-            metadata.metrics.extend([
-                f"table_rows_{boundary.num_rows}",
-                f"table_cols_{boundary.num_cols}",
-                f"extraction_method_{extraction_result.extraction_method}",
-                f"extraction_confidence_{extraction_result.confidence:.2f}"
-            ])
-            
-            # Add units per column
-            if units_per_column:
-                for col, unit in units_per_column.items():
-                    metadata.metrics.append(f"unit_{col}_{unit}")
-            
-            # Add page information if available
-            if boundary.start_page is not None:
-                metadata.page = boundary.start_page
-                metadata.metrics.append(f"page_start_{boundary.start_page}")
-                if boundary.end_page and boundary.end_page != boundary.start_page:
-                    metadata.metrics.append(f"page_end_{boundary.end_page}")
-                    metadata.metrics.append(f"multi_page_table")
-            
-            # Create chunk
-            chunk = Chunk(
-                metadata=metadata,
-                content=markdown_content
+            # Use shared metadata builder (no table_caption in metadata!)
+            metadata = self._build_chunk_metadata(
+                boundary, doc_id, table_id, len(enhanced_content.split()),
+                final_title, classification  # No caption parameter
             )
             
+            # Create chunk with enhanced content
+            chunk = Chunk(metadata=metadata, content=enhanced_content)
             self.logger.info(f"Created single chunk for table {table_id}")
             return chunk
             
@@ -721,121 +676,90 @@ class TableChunker(BaseProcessor):
             return None
     
     async def _create_multi_chunk_table(self, extraction_result: TableExtractionResult, doc_id: str) -> List[Chunk]:
-        """Split large MD table into multiple chunks while preserving headers."""
+        """Optimized multi-chunk table creation using shared metadata builder."""
         try:
             boundary = extraction_result.boundary_info
             table_id = boundary.table_id
             markdown_content = extraction_result.md_content
             
-            # Split markdown table into lines
-            lines = markdown_content.split('\n')
-            table_lines = [line for line in lines if '|' in line and line.strip()]
-            
+            # Optimized table line extraction and header detection
+            table_lines = [line for line in markdown_content.split('\n') if '|' in line and line.strip()]
             if not table_lines:
                 return []
             
-            # Identify header lines (first 1-2 lines, before any separator)
-            header_lines = []
-            data_start_idx = 0
+            # Find header lines and data start index efficiently
+            header_lines, data_start_idx = [], 0
+            separator_pattern = re.compile(r'^\s*\|[\s\-\|]*\|\s*$')
             
-            for idx, line in enumerate(table_lines[:3]):  # Check first 3 lines
-                if re.match(r'^\s*\|[\s\-\|]*\|\s*$', line):  # Separator line
+            for idx, line in enumerate(table_lines[:3]):
+                if separator_pattern.match(line):
                     data_start_idx = idx + 1
                     break
-                elif idx < 2:  # Potential header lines
+                elif idx < 2:
                     header_lines.append(line)
                     data_start_idx = idx + 1
             
-            # Get data lines
             data_lines = table_lines[data_start_idx:]
-            
-            # Calculate chunk size accounting for headers
             chunk_size = max(1, self.max_rows_per_chunk - len(header_lines))
-            chunks = []
+            total_chunks = (len(data_lines) + chunk_size - 1) // chunk_size
             
-            # Generate metadata for first chunk only (to save LLM costs)
-            title = None
-            summary = None
-            classification = None
+            # Extract heading from original JSON caption
+            extracted_heading = self._extract_table_heading_simple(boundary.caption) if boundary.caption else None
             
+            # Generate LLM metadata once (not per chunk)
+            llm_title, llm_summary, classification = None, None, None
             if self.llm_processor:
-                title, summary, classification = await self.llm_processor.generate_table_metadata(
-                    markdown_content[:1000], table_id  # Use first part for metadata
+                llm_title, llm_summary, classification = await self.llm_processor.generate_table_metadata(
+                    markdown_content[:1000], table_id
                 )
             
-            # Create chunks
-            total_chunks = (len(data_lines) + chunk_size - 1) // chunk_size  # Ceiling division
+            # Proper mapping for multi-chunk tables
+            final_title = extracted_heading or llm_title  # Short specific heading
             
+            # For summary: prefer LLM, fallback to clean original caption
+            if llm_summary:
+                final_caption = llm_summary  # High-level LLM summary
+            elif boundary.caption:
+                final_caption = self._create_fallback_summary(boundary.caption)
+            else:
+                final_caption = None
+            
+            # Pre-calculate separator for efficiency
+            separator = None
+            if header_lines:
+                sep_cols = len(header_lines[0].split('|')) - 2
+                separator = '|' + '|'.join(['---'] * sep_cols) + '|'
+            
+            # Create chunks efficiently
+            chunks = []
             for chunk_idx in range(total_chunks):
                 start_idx = chunk_idx * chunk_size
                 end_idx = min(start_idx + chunk_size, len(data_lines))
                 chunk_data_lines = data_lines[start_idx:end_idx]
                 
-                # Combine headers + separator + chunk data
+                # Build chunk content
                 chunk_lines = header_lines[:]
-                if header_lines and chunk_data_lines:
-                    # Add separator if we have headers
-                    sep_cols = len(header_lines[0].split('|')) - 2 if header_lines else 3
-                    separator = '|' + '|'.join(['---' for _ in range(sep_cols)]) + '|'
+                if separator and chunk_data_lines:
                     chunk_lines.append(separator)
-                
                 chunk_lines.extend(chunk_data_lines)
                 chunk_content = '\n'.join(chunk_lines)
                 
-                # Create comprehensive chunk metadata for multi-part table
-                chunk_id = f"{doc_id}_{table_id}_part_{chunk_idx + 1}"
+                # Create part-specific caption for content
+                part_suffix = f" (Part {chunk_idx + 1} of {total_chunks})"
+                part_caption = f"{final_caption}{part_suffix}" if final_caption else f"Part {chunk_idx + 1} of {total_chunks}"
                 
-                metadata = ChunkMetadata(
-                    chunk_id=chunk_id,
-                    doc_id=doc_id,
-                    chunk_type="table",
-                    word_count=len(chunk_content.split()),
-                    table_id=table_id,
-                    column_headers=boundary.headers or [],
-                    table_title=title,
-                    table_caption=f"{summary} (Part {chunk_idx + 1} of {total_chunks})" if summary else f"Part {chunk_idx + 1} of {total_chunks}"
+                # Build enhanced chunk content with title + caption + summary + table
+                enhanced_content = self._build_table_chunk_content(
+                    final_title, boundary.caption, part_caption, chunk_content
                 )
                 
-                # Add comprehensive table-specific metadata
-                if classification:
-                    metadata.section_path = [f"Table: {classification} (Part {chunk_idx + 1})"]
-                    metadata.metrics.append(f"classification_{classification}")
-                
-                # Add row headers to metrics if available
-                if hasattr(boundary, 'row_headers') and boundary.row_headers:
-                    metadata.metrics.extend([f"row_header_{i}_{header}" for i, header in enumerate(boundary.row_headers)])
-                    metadata.metrics.append(f"row_headers_count_{len(boundary.row_headers)}")
-                
-                # Add table dimensions and chunk-specific info
-                metadata.metrics.extend([
-                    f"table_rows_{boundary.num_rows}",
-                    f"table_cols_{boundary.num_cols}",
-                    f"chunk_part_{chunk_idx + 1}_of_{total_chunks}",
-                    f"multi_chunk_table",
-                    f"chunk_rows_{len(chunk_data_lines)}"
-                ])
-                
-                # Add units per column if available
-                units_per_column = TableUnitDetector.detect_units_per_column(boundary.headers or [])
-                if units_per_column:
-                    for col, unit in units_per_column.items():
-                        metadata.metrics.append(f"unit_{col}_{unit}")
-                
-                # Add page information if available
-                if boundary.start_page is not None:
-                    metadata.page = boundary.start_page
-                    metadata.metrics.append(f"page_start_{boundary.start_page}")
-                    if boundary.end_page and boundary.end_page != boundary.start_page:
-                        metadata.metrics.append(f"page_end_{boundary.end_page}")
-                        metadata.metrics.append(f"multi_page_table")
-                
-                # Create chunk
-                chunk = Chunk(
-                    metadata=metadata,
-                    content=chunk_content
+                # Use shared metadata builder (no table_caption in metadata!)
+                metadata = self._build_chunk_metadata(
+                    boundary, doc_id, table_id, len(enhanced_content.split()),
+                    final_title, classification, f"_part_{chunk_idx + 1}"  # No caption parameter
                 )
                 
-                chunks.append(chunk)
+                chunks.append(Chunk(metadata=metadata, content=enhanced_content))
             
             self.logger.info(f"Split table {table_id} into {len(chunks)} chunks")
             return chunks
@@ -854,13 +778,13 @@ class TableProcessor(BaseProcessor):
         self.logger = logging.getLogger(__name__ + '.TableProcessor')
     
     async def process(self, content: str, **kwargs) -> List[Chunk]:
-        """Process JSON content and extract table chunks using MD extraction."""
+        """Process JSON content and convert tables directly to markdown chunks."""
         doc_id = kwargs.get('doc_id', 'unknown_doc')
         
         self.logger.info(f"Starting table processing for document: {doc_id}")
-        self.logger.info(f"Strategy: JSON detection + MD extraction")
+        self.logger.info(f"Strategy: Direct JSON-to-markdown conversion")
         
-        # Process tables using JSON boundaries + MD content
+        # Process tables using direct JSON-to-markdown conversion
         table_chunks = await self.table_chunker.process(content, doc_id=doc_id)
         
         self.logger.info(f"Table processing complete: {len(table_chunks)} chunks created")
