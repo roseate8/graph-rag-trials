@@ -106,13 +106,19 @@ def extract_sample_chunks(sample_size: int = 100, include_embeddings: bool = Tru
             'chunk_type', 'embedding_dim', 'structural_metadata', 'table_metadata', 'entity_metadata',
             
             # Specific table fields
-            'table_id', 'column_headers', 'table_title', 'table_caption',
+            'table_id', 'column_headers', 'table_title', 'table_caption', 'table_shape',
             
             # Reference fields
             'outbound_refs', 'inbound_refs',
             
             # Entity fields
-            'regions', 'metrics', 'time_periods', 'dates',
+            'regions', 'metrics', 'time_periods', 'dates', 'orgs',
+            
+            # NEW: spaCy extraction fields
+            'spacy_extraction',
+            
+            # Additional metadata fields
+            'product_version', 'folder_path', 'time_context',
             
             # JSON metadata fields that might contain nested data
             'metadata', 'table_metadata', 'structural_metadata', 'entity_metadata'

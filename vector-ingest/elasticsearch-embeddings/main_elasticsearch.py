@@ -16,7 +16,9 @@ from multiprocessing import cpu_count
 import argparse
 
 # Add src to path (relative to parent directory)
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+parent_dir = Path(__file__).parent.parent
+sys.path.append(str(parent_dir / "src"))
+sys.path.append(str(parent_dir))
 
 from src.chunking.models import Chunk, DocumentMetadata, DocumentStructure, ChunkMetadata, StructuralMetadata
 from src.chunking.processors.toc_detector import TableOfContentsDetector
@@ -474,11 +476,10 @@ class DocumentProcessor:
                 logger.debug(f"Failed to read JSON file: {e}")
         enriched_chunks = enrich_chunks_with_structure(chunks_with_entities, {'doc_id': metadata.doc_id, 'document_structure': structure, 'md_content': cleaned_content, 'json_content': json_content})
         
-        # 9. Generate embeddings
-        logger.info("🔮 Generating embeddings...")
-        final_chunks = self._generate_embeddings(enriched_chunks)
+        # 9. Skip local embedding generation - Elasticsearch inference endpoint will handle it
+        logger.info("⚡ Skipping local embedding generation (using Elasticsearch inference endpoint)")
         
-        return final_chunks
+        return enriched_chunks
     
     def _discover_input_files(self, input_dir: Path) -> List[Path]:
         """Discover all supported files recursively in input directory and any nested subdirectories."""
@@ -993,13 +994,13 @@ def upload_to_elasticsearch(chunks_file: Path) -> bool:
             data = json.load(f)
         
         chunks = data.get("chunks", [])
-        chunks_with_embeddings = [c for c in chunks if "embedding" in c and c["embedding"]]
+        # No need to filter for embeddings - Elasticsearch inference endpoint will generate them
         
         logger.info(f"📊 Total chunks: {len(chunks)}")
-        logger.info(f"📊 Chunks with embeddings: {len(chunks_with_embeddings)}")
+        logger.info(f"🧠 Using Elasticsearch inference endpoint for automatic embedding generation")
         
-        if not chunks_with_embeddings:
-            logger.warning("⚠️ No chunks with embeddings found - nothing to upload")
+        if not chunks:
+            logger.warning("⚠️ No chunks found - nothing to upload")
             return False
         
         # Connect to Elasticsearch
@@ -1016,8 +1017,8 @@ def upload_to_elasticsearch(chunks_file: Path) -> bool:
             logger.error("❌ Failed to create Elasticsearch index")
             return False
         
-        # Upload chunks
-        success = store.upload_chunks(chunks_with_embeddings)
+        # Upload chunks (embeddings will be generated automatically by inference endpoint)
+        success = store.upload_chunks(chunks)
         
         if success:
             doc_count = store.get_document_count()
@@ -1319,18 +1320,28 @@ def main():
     logger.info(f"Chunks saved to: {chunks_file}")
     logger.info(f"Summary saved to: {summary_file}")
     
-    # Upload to Milvus vector store
-    if not args.skip_milvus_upload and len(chunks) > 0:
-        logger.info("📤 Uploading embeddings to Milvus vector store...")
-        upload_success = upload_to_milvus(chunks_file, args.milvus_config)
+    # Upload to Elasticsearch vector store
+    if not args.skip_elasticsearch_upload and len(chunks) > 0:
+        logger.info("📤 Uploading embeddings to Elasticsearch vector store...")
+        upload_success = upload_to_elasticsearch(chunks_file)
         if upload_success:
-            logger.info("✅ Successfully uploaded embeddings to Milvus")
+            logger.info("✅ Successfully uploaded embeddings to Elasticsearch")
+            
+            # Dump all chunks from Elasticsearch for verification
+            logger.info("📥 Dumping all chunks from Elasticsearch for verification...")
+            from dump_elasticsearch_chunks import dump_elasticsearch_chunks
+            dump_file = args.output_dir / "elastic-embeddings.json"
+            
+            if dump_elasticsearch_chunks(str(dump_file)):
+                logger.info(f"✅ Successfully dumped Elasticsearch chunks to: {dump_file}")
+            else:
+                logger.warning("⚠️ Failed to dump chunks from Elasticsearch")
         else:
-            logger.warning("⚠️ Failed to upload embeddings to Milvus - continuing anyway")
-    elif args.skip_milvus_upload:
-        logger.info("🚫 Skipping Milvus upload (--skip-milvus-upload flag)")
+            logger.warning("⚠️ Failed to upload embeddings to Elasticsearch - continuing anyway")
+    elif args.skip_elasticsearch_upload:
+        logger.info("🚫 Skipping Elasticsearch upload (--skip-elasticsearch-upload flag)")
     elif len(chunks) == 0:
-        logger.warning("⚠️ No chunks to upload to Milvus")
+        logger.warning("⚠️ No chunks to upload to Elasticsearch")
     
     logger.info(f"Generated {len(chunks)} chunks with full pipeline processing")
     logger.info(f"Total non-API tokens: {processor.token_tracker.get_total():,}")

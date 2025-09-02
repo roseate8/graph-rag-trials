@@ -1,0 +1,5 @@
+[33mb377a63[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add hardcoding analysis and chunking system improvements
+[33m9f3c485[m Add sample chunk extraction script and update RAG UI with improved styling and functionality
+[33m311a00b[m Add comprehensive pipeline analysis with Mermaid diagram
+[33m3a26434[m Update processing pipeline and configuration
+[33me38903b[m Fix multiprocessing freeze and integrate Milvus upload as default
