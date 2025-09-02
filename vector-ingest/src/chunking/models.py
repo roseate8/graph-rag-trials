@@ -62,7 +62,19 @@ class ChunkMetadata(BaseModel):
     table_id: Optional[str] = None
     column_headers: List[str] = Field(default_factory=list)
     table_title: Optional[str] = None
-    table_caption: Optional[str] = None
+    table_shape: Optional[Dict[str, int]] = None  # {"rows": X, "cols": Y}
+    
+    # Organization entities (mapped from existing entity extraction)
+    orgs: List[str] = Field(default_factory=list)
+    
+    # Time context for financial data
+    time_context: Optional[Dict[str, str]] = None  # {"start": "...", "end": "...", "granularity": "..."}
+    
+    # Product versioning
+    product_version: str = "v1"
+    
+    # File hierarchy path (comma-separated folder structure)
+    folder_path: List[str] = Field(default_factory=list)
     
     # Structural metadata (Phase 1 enrichment)
     structural_metadata: Optional[StructuralMetadata] = None

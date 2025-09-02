@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Graph-RAG Document Processing Pipeline
-Main entry point for document chunking with TOC detection.
+Graph-RAG Document Processing Pipeline - Elasticsearch Edition
+Main entry point for document chunking with Elasticsearch vector storage.
 """
 
 import logging
@@ -15,8 +15,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 import argparse
 
-# Add src to path
-sys.path.append(str(Path(__file__).parent / "src"))
+# Add src to path (relative to parent directory)
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from src.chunking.models import Chunk, DocumentMetadata, DocumentStructure, ChunkMetadata, StructuralMetadata
 from src.chunking.processors.toc_detector import TableOfContentsDetector
@@ -25,7 +25,16 @@ from src.chunking.processors import PostProcessor, ChunkCleaner, TableProcessor
 from src.chunking.processors.entity_extractor import EntityExtractor
 from src.chunking.metadata_enrichment.spacy_extractor import create_spacy_extractor
 from src.chunking.processors.llm_utils import get_openai_api_key, has_openai_api_key, clear_openai_api_key, set_openai_api_key
-from src.embeddings import EmbeddingService, clear_milvus_collection, drop_milvus_collection, MilvusVectorStore, get_config
+from src.embeddings import EmbeddingService
+from elasticsearch_client import create_elasticsearch_store
+
+# Elasticsearch Configuration
+ELASTICSEARCH_CONFIG = {
+    "url": "https://1600c6e333fd4bdb8c8e9b9dec5c5fef.us-west-2.aws.found.io:443",
+    "username": "elastic", 
+    "password": "XI6rIccvUKLCgVnX11QPI8CV",
+    "inference_id": "text-vectorizer"
+}
 
 # Set up logging
 logging.basicConfig(
@@ -967,25 +976,17 @@ def setup_openai_api_key(require_key: bool = False) -> bool:
         return False
 
 
-def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool:
+def upload_to_elasticsearch(chunks_file: Path) -> bool:
     """
-    Upload processed chunks to Milvus vector store.
+    Upload processed chunks to Elasticsearch vector store.
     
     Args:
         chunks_file: Path to the processed chunks JSON file
-        config_type: Milvus configuration type to use
         
     Returns:
         bool: True if upload successful, False otherwise
     """
     try:
-        import json
-        
-        # Load configuration
-        config = get_config(config_type)
-        logger.info(f"📡 Connecting to Milvus at {config.host}:{config.port}")
-        logger.info(f"📂 Target collection: {config.collection_name}")
-        
         # Load chunks
         logger.info(f"📥 Loading chunks from: {chunks_file}")
         with open(chunks_file, 'r', encoding='utf-8') as f:
@@ -1001,88 +1002,31 @@ def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool
             logger.warning("⚠️ No chunks with embeddings found - nothing to upload")
             return False
         
-        # Connect to Milvus
-        store = MilvusVectorStore(config)
+        # Connect to Elasticsearch
+        logger.info(f"📡 Connecting to Elasticsearch at {ELASTICSEARCH_CONFIG['url']}")
+        store = create_elasticsearch_store(ELASTICSEARCH_CONFIG)
         
         if not store.connect():
-            logger.error("❌ Failed to connect to Milvus")
+            logger.error("❌ Failed to connect to Elasticsearch")
             return False
         
-        # Create collection and index
-        logger.info("🏗️ Creating collection...")
-        if not store.create_collection():
-            logger.error("❌ Failed to create collection")
-            return False
-        
-        logger.info("🔍 Creating index...")
+        # Create index with proper mapping
+        logger.info("🏗️ Creating Elasticsearch index...")
         if not store.create_index():
-            logger.error("❌ Failed to create index")
+            logger.error("❌ Failed to create Elasticsearch index")
             return False
         
-        # Convert and upload chunks
-        logger.info("🔄 Converting chunks to Milvus format...")
+        # Upload chunks
+        success = store.upload_chunks(chunks_with_embeddings)
         
-        # Pre-allocate list and define core fields once
-        chunk_count = len(chunks_with_embeddings)
-        milvus_chunks = [None] * chunk_count
-        core_fields = {"chunk_id", "doc_id", "content", "word_count", "section_path", "embedding"}
-        extended_field_count = 0
+        if success:
+            doc_count = store.get_document_count()
+            logger.info(f"🎯 Upload complete! Elasticsearch index now contains {doc_count:,} documents")
         
-        for i, chunk in enumerate(chunks_with_embeddings):
-            # Create milvus_chunk by copying all fields, then handle special cases
-            milvus_chunk = dict(chunk)  # O(1) dict copy vs O(n) field-by-field
-            
-            # Apply transformations in-place
-            milvus_chunk["content"] = chunk["content"][:65535]  # Truncate efficiently
-            milvus_chunk["section_path"] = str(chunk.get("section_path", ""))
-            
-            # Convert complex types to JSON strings (only check non-core fields)
-            chunk_extended_fields = 0
-            for key, value in chunk.items():
-                if key not in core_fields:
-                    chunk_extended_fields += 1
-                    if isinstance(value, (list, dict)):
-                        milvus_chunk[key] = json.dumps(value, ensure_ascii=False)
-                    elif not isinstance(value, (str, int, float, bool)) and value is not None:
-                        milvus_chunk[key] = str(value)
-            
-            milvus_chunks[i] = milvus_chunk
-            
-            if chunk_extended_fields > 0:
-                extended_field_count += 1
-                if i < 2:  # Log first 2 chunks with extended fields
-                    extended_keys = [k for k in chunk.keys() if k not in core_fields]
-                    logger.info(f"📊 Chunk {i+1} has {chunk_extended_fields} extended fields: {extended_keys}")
-        
-        logger.info(f"📊 {extended_field_count}/{chunk_count} chunks have extended metadata")
-        
-        # Upload in batches
-        batch_size = 200
-        total_uploaded = 0
-        
-        for i in range(0, len(milvus_chunks), batch_size):
-            batch = milvus_chunks[i:i + batch_size]
-            batch_num = (i // batch_size) + 1
-            total_batches = (len(milvus_chunks) + batch_size - 1) // batch_size
-            
-            logger.info(f"📤 Uploading batch {batch_num}/{total_batches}: {len(batch)} chunks")
-            
-            success = store.insert_chunks(batch)
-            if success:
-                total_uploaded += len(batch)
-            else:
-                logger.error(f"❌ Failed to upload batch {batch_num}")
-                return False
-        
-        # Get final collection stats
-        entity_count = store.get_entity_count()
-        logger.info(f"🎯 Upload complete! {total_uploaded} chunks uploaded")
-        logger.info(f"📊 Collection now contains {entity_count:,} entities")
-        
-        return True
+        return success
         
     except Exception as e:
-        logger.error(f"❌ Error during Milvus upload: {str(e)}")
+        logger.error(f"❌ Error during Elasticsearch upload: {str(e)}")
         return False
     finally:
         # Cleanup connection
@@ -1131,29 +1075,24 @@ def main():
         help="Require OpenAI API key for LLM metadata generation (prompt if not available)"
     )
     parser.add_argument(
-        "--clear-milvus",
+        "--clear-elasticsearch",
         action="store_true",
-        help="Clear all embeddings from Milvus before processing"
+        help="Clear all documents from Elasticsearch index before processing"
     )
     parser.add_argument(
-        "--drop-milvus",
+        "--drop-elasticsearch",
         action="store_true", 
-        help="Drop entire Milvus collection before processing (more thorough than --clear-milvus)"
+        help="Drop entire Elasticsearch index before processing (more thorough than --clear-elasticsearch)"
     )
     parser.add_argument(
-        "--confirm-milvus-cleanup",
+        "--confirm-elasticsearch-cleanup",
         action="store_true",
-        help="Skip confirmation prompt for Milvus cleanup operations"
+        help="Skip confirmation prompt for Elasticsearch cleanup operations"
     )
     parser.add_argument(
-        "--skip-milvus-upload",
+        "--skip-elasticsearch-upload",
         action="store_true",
-        help="Skip automatic upload of embeddings to Milvus vector store"
-    )
-    parser.add_argument(
-        "--milvus-config",
-        default="production",
-        help="Milvus configuration type to use (default: production)"
+        help="Skip automatic upload of embeddings to Elasticsearch vector store"
     )
     
     args = parser.parse_args()
@@ -1176,40 +1115,47 @@ def main():
         logger.info("Cache cleared. Exiting (--cache-only specified).")
         return
     
-    # Handle Milvus cleanup
-    if args.clear_milvus or args.drop_milvus:
-        logger.info("🧹 Milvus cleanup requested...")
+    # Handle Elasticsearch cleanup
+    if args.clear_elasticsearch or args.drop_elasticsearch:
+        logger.info("🧹 Elasticsearch cleanup requested...")
         
         try:
-            if args.drop_milvus:
-                logger.info("🗑️  Dropping entire Milvus collection...")
-                success = drop_milvus_collection("production", confirm=args.confirm_milvus_cleanup)
+            store = create_elasticsearch_store(ELASTICSEARCH_CONFIG)
+            if not store.connect():
+                logger.error("❌ Failed to connect to Elasticsearch for cleanup")
+                return
+            
+            if args.drop_elasticsearch:
+                logger.info("🗑️  Dropping entire Elasticsearch index...")
+                success = store.delete_index()
                 if success:
-                    logger.info("✅ Successfully dropped Milvus collection")
+                    logger.info("✅ Successfully dropped Elasticsearch index")
                 else:
-                    logger.error("❌ Failed to drop Milvus collection")
-                    if not args.confirm_milvus_cleanup:
+                    logger.error("❌ Failed to drop Elasticsearch index")
+                    if not args.confirm_elasticsearch_cleanup:
                         response = input("Continue processing anyway? (y/N): ").strip().lower()
                         if response != 'y':
                             logger.info("Processing cancelled by user")
                             return
             
-            elif args.clear_milvus:
-                logger.info("🧽 Clearing Milvus collection data...")
-                success = clear_milvus_collection("production", confirm=args.confirm_milvus_cleanup)
+            elif args.clear_elasticsearch:
+                logger.info("🧽 Clearing Elasticsearch index data...")
+                success = store.clear_index()
                 if success:
-                    logger.info("✅ Successfully cleared Milvus collection")
+                    logger.info("✅ Successfully cleared Elasticsearch index")
                 else:
-                    logger.error("❌ Failed to clear Milvus collection")
-                    if not args.confirm_milvus_cleanup:
+                    logger.error("❌ Failed to clear Elasticsearch index")
+                    if not args.confirm_elasticsearch_cleanup:
                         response = input("Continue processing anyway? (y/N): ").strip().lower()
                         if response != 'y':
                             logger.info("Processing cancelled by user")
                             return
+            
+            store.disconnect()
                             
         except Exception as e:
-            logger.error(f"❌ Error during Milvus cleanup: {e}")
-            if not args.confirm_milvus_cleanup:
+            logger.error(f"❌ Error during Elasticsearch cleanup: {e}")
+            if not args.confirm_elasticsearch_cleanup:
                 response = input("Continue processing anyway? (y/N): ").strip().lower()
                 if response != 'y':
                     logger.info("Processing cancelled due to cleanup error")
