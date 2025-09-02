@@ -23,7 +23,7 @@ class SpacyMetadataExtractor:
     SKIP_PREFIXES = ('the ', 'and ', 'page ', 'item ', 'form ')
     LOCATION_LABELS = frozenset(['GPE', 'LOC'])
     
-    def __init__(self, model_name: str = "en_core_web_sm"):
+    def __init__(self, model_name: str = "en_core_web_lg"):
         """Initialize with spaCy model and performance optimizations."""
         self.logger = logging.getLogger(__name__ + '.SpacyMetadataExtractor')
         self.nlp = None
@@ -69,6 +69,9 @@ class SpacyMetadataExtractor:
                     if len(entity_sets['organizations']) >= 5:
                         break
             
+            # Post-process to fix common misclassifications before building result
+            self._fix_product_misclassifications(entity_sets)
+            
             # Convert to limited result lists
             return self._build_result(entity_sets)
             
@@ -78,14 +81,14 @@ class SpacyMetadataExtractor:
     
     def _classify_entity(self, label: str, text_clean: str, text_len: int, 
                         entity_sets: Dict[str, Set[str]]) -> bool:
-        """Classify and add entity with optimized performance."""
+        """Classify entities using spaCy's default model capabilities."""
         # ORGANIZATIONS: Company names, regulatory bodies
         if label == 'ORG' and text_len > 3:
             if not text_clean.lower().startswith(self.SKIP_PREFIXES):
                 entity_sets['organizations'].add(text_clean)
                 return True
         
-        # LOCATIONS: Geographic entities (use frozenset for fast membership test)  
+        # LOCATIONS: Geographic entities  
         elif label in self.LOCATION_LABELS and text_len > 2:
             entity_sets['locations'].add(text_clean)
         
@@ -98,6 +101,48 @@ class SpacyMetadataExtractor:
             entity_sets['events'].add(text_clean)
         
         return False
+    
+    def _fix_product_misclassifications(self, entity_sets: Dict[str, Set[str]]):
+        """Fix common product misclassifications from organizations to products."""
+        # Common product patterns that get misclassified as ORG
+        product_indicators = [
+            'iphone', 'ipad', 'macbook', 'imac', 'airpods', 'apple watch',
+            'windows', 'office', 'excel', 'word', 'powerpoint', 'teams', 'azure',
+            'chrome', 'gmail', 'maps', 'youtube', 'android',
+            'aws', 'ec2', 's3', 'lambda', 'prime',
+            'model s', 'model 3', 'model x', 'model y', 'cybertruck',
+            'elasticsearch', 'kibana', 'logstash'
+        ]
+        
+        # Check organizations for misclassified products
+        orgs_to_remove = set()
+        products_to_add = set()
+        
+        for org in list(entity_sets['organizations']):
+            org_lower = org.lower()
+            
+            # Check if this organization name matches known product patterns
+            for pattern in product_indicators:
+                if pattern in org_lower:
+                    orgs_to_remove.add(org)
+                    products_to_add.add(org)
+                    break
+            
+            # Check for version/model patterns indicating products
+            version_patterns = [' pro', ' plus', ' premium', ' enterprise', ' 365', ' 11', ' 15']
+            if any(pattern in org_lower for pattern in version_patterns):
+                # Don't move if it has clear company indicators
+                company_indicators = [' inc', ' corp', ' ltd', ' llc', ' company', ' co.']
+                if not any(indicator in org_lower for indicator in company_indicators):
+                    orgs_to_remove.add(org)
+                    products_to_add.add(org)
+        
+        # Apply the fixes
+        for org in orgs_to_remove:
+            entity_sets['organizations'].discard(org)
+        
+        for product in products_to_add:
+            entity_sets['products'].add(product)
     
     def _build_result(self, entity_sets: Dict[str, Set[str]]) -> Dict[str, Any]:
         """Build final result with entity limits applied."""
@@ -115,7 +160,7 @@ class SpacyMetadataExtractor:
         }
 
 
-def create_spacy_extractor(model_name: str = "en_core_web_sm") -> SpacyMetadataExtractor:
+def create_spacy_extractor(model_name: str = "en_core_web_lg") -> SpacyMetadataExtractor:
     """Factory function to create simplified spaCy extractor."""
     return SpacyMetadataExtractor(model_name=model_name)
 
