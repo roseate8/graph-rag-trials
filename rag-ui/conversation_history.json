@@ -4701,5 +4701,433 @@
       "peak_memory_mb": 13227.2,
       "peak_cpu_percent": 29.2
     }
+  },
+  {
+    "timestamp": "2025-09-03T00:54:36.2924Z",
+    "query": "tell me about eps this year",
+    "result": {
+      "retrieved_chunks": [
+        {
+          "content": "Information By Reportable\n\nThe following table shows information by reportable segment for 2024, 2023 and 2022 (in millions):\n\nshows information by reportable segment for 2024, 2023 and 2022 (in millions):\n\n|  | 2024 | 2023 | 2022 |\n|---|---|---|---|\n| Americas: |  |  |  |\n| Net sales | $ 167,045 | $ 162,560 | $ 169,658 |\n| Operating income | $ 67,656 | $ 60,508 | $ 62,683 |\n| Europe: |  |  |  |\n| Net sales | $ 101,328 | $ 94,294 | $ 95,118 |\n| Operating income | $ 41,790 | $ 36,098 | $ 35,233 |\n| Greater China: |  |  |  |\n| Net sales | $ 66,952 | $ 72,559 | $ 74,200 |\n| Operating income | $ 27,082 | $ 30,328 | $ 31,153 |\n| Japan: |  |  |  |\n| Net sales | $ 25,052 | $ 24,257 | $ 25,977 |\n| Operating income | $ 12,454 | $ 11,888 | $ 12,257 |\n| Rest of Asia Pacific: |  |  |  |\n| Net sales | $ 30,658 | $ 29,615 | $ 29,375 |\n| Operating income | $ 13,062 | $ 12,066 | $ 11,569 |",
+          "score": 0.6061239242553711,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_table_38",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 203,
+            "section_path": "['People: Asia Pacific, Greater China']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "| Name | Title | Date |\n|---|---|---|\n| /s/ Timothy D. Cook | Chief Executive Officer and Director (Principal Executive Officer) | November 1, 2024 |\n| TIMOTHY D. COOK |  |  |\n| /s/ Luca Maestri | Senior Vice President, Chief Financial Officer (Principal Financial Officer) | November 1, 2024 |\n| LUCA MAESTRI |  |  |\n| /s/ Chris Kondo | Senior Director of Corporate Accounting (Principal Accounting Officer) | November 1, 2024 |\n| CHRIS KONDO |  |  |\n| /s/ Wanda Austin | Director | November 1, 2024 |\n| WANDA AUSTIN |  |  |\n| /s/ Alex Gorsky | Director | November 1, 2024 |\n| ALEX GORSKY |  |  |\n| /s/ Andrea Jung | Director | November 1, 2024 |\n| ANDREA JUNG |  |  |\n| /s/ Arthur D. Levinson | Director and Chair of the Board | November 1, 2024 |\n| ARTHUR D. LEVINSON |  |  |\n| /s/ Monica Lozano | Director | November 1, 2024 |\n| MONICA LOZANO |  |  |\n| /s/ Ronald D. Sugar | Director | November 1, 2024 |\n| RONALD D. SUGAR |  |  |\n| /s/ Susan L. Wagner | Director | November 1, 2024 |",
+          "score": 0.6029233336448669,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_table_47",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 206,
+            "section_path": "['People: Chief Executive, Chief Financial, Executive Officer']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "Exhibit and Financial Statement Schedules\n\n## (a) Documents filed as part of this report\n\n## (1) All financial statements\n\n| Index to Consolidated Financial Statements | Page |\n|-----------------------------------------------------------------------------------------------------------------------------------|--------|\n| Consolidated Statements of Operations for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 29 |\n| Consolidated Statements of Comprehensive Income for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 30 |\n| Consolidated Balance Sheets as of September 28, 2024 and September 30, 2023 | 31 |\n| Consolidated Statements of Shareholders' Equity for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 32 |\n| Consolidated Statements of Cash Flows for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 33 |\n| Notes to Consolidated Financial Statements | 34 |\n| Reports of Independent Registered Public Accounting Firm* | 48 |\n\n* Ernst &amp; Young LLP, PCAOB Firm ID No. 00042.\n\n## (2) Financial Statement Schedules\n\nAll financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes included in this Form 10-K.\n\n## (3) Exhibits required by Item 601 of Regulation S-K  (1)\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 3.1 | Restated Articles of Incorporation of the Registrant filed on August 3, 2020. | 8-K | 3.1 | 8/7/20 |\n| 3.2 | Amended and Restated Bylaws of the Registrant effective as of August 20, 2024. | 8-K | 3.2 | 8/23/24 |\n| 4.1** | Description of Securities of the Registrant. | | | |\n| 4.2 | Indenture, dated as of April 29, 2013, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 4/29/13 |\n| 4.3 | Officer's Certificate of the Registrant, dated as of May 3, 2013, including forms of global notes representing the Floating Rate Notes due 2016, Floating Rate Notes due 2018, 0.45% Notes due 2016, 1.00% Notes due 2018, 2.40% Notes due 2023 and 3.85% Notes due 2043. | 8-K | 4.1 | 5/3/13 |\n| 4.4 | Officer's Certificate of the Registrant, dated as of May 6, 2014, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2019, 1.05% Notes due 2017, 2.10% Notes due 2019, 2.85% Notes due 2021, 3.45% Notes due 2024 and 4.45% Notes due 2044. | 8-K | 4.1 | 5/6/14 |\n| 4.5 | Officer's Certificate of the Registrant, dated as of November 10, 2014, including forms of global notes representing the 1.000% Notes due 2022 and 1.625% Notes due 2026. | 8-K | 4.1 | 11/10/14 |\n| 4.6 | Officer's Certificate of the Registrant, dated as of February 9, 2015, including forms of global notes representing the Floating Rate Notes due 2020, 1.55% Notes due 2020, 2.15% Notes due 2022, 2.50% Notes due 2025 and 3.45% Notes due 2045. | 8-K | 4.1 | 2/9/15 |\n| 4.7 | Officer's Certificate of the Registrant, dated as of May 13, 2015, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2020, 0.900% Notes due 2017, 2.000% Notes due 2020, 2.700% Notes due 2022, 3.200% Notes due 2025, and 4.375% Notes due 2045. | 8-K | 4.1 | 5/13/15 |\n| 4.8 | Officer's Certificate of the Registrant, dated as of July 31, 2015, including forms of global notes representing the 3.05% Notes due 2029 and 3.60% Notes due 2042. | 8-K | 4.1 | 7/31/15 |\n| 4.9 | Officer's Certificate of the Registrant, dated as of September 17, 2015, including forms of global notes representing the 1.375% Notes due 2024 and 2.000% Notes due 2027. | 8-K | 4.1 | 9/17/15 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.10 | Officer's Certificate of the Registrant, dated as of February 23, 2016, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2021, 1.300% Notes due 2018, 1.700% Notes due 2019, 2.250% Notes due 2021, 2.850% Notes due 2023, 3.250% Notes due 2026, 4.500% Notes due 2036 and 4.650% Notes due 2046. | 8-K | 4.1 | 2/23/16 |\n| 4.11 | Supplement No. 1 to the Officer's Certificate of the Registrant, dated as of March 24, 2016. | 8-K | 4.1 | 3/24/16 |\n| 4.12 | Officer's Certificate of the Registrant, dated as of August 4, 2016, including forms of global notes representing the Floating Rate Notes due 2019, 1.100% Notes due 2019, 1.550% Notes due 2021, 2.450% Notes due 2026 and 3.850% Notes due 2046. | 8-K | 4.1 | 8/4/16 |\n| 4.13 | Officer's Certificate of the Registrant, dated as of February 9, 2017, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.550% Notes due 2019, 1.900% Notes due 2020, 2.500% Notes due 2022, 3.000% Notes due 2024, 3.350% Notes due 2027 and 4.250% Notes due 2047. | 8-K | 4.1 | 2/9/17 |\n| 4.14 | Officer's Certificate of the Registrant, dated as of May 11, 2017, including forms of global notes representing the Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.800% Notes due 2020, 2.300% Notes due 2022, 2.850% Notes due 2024 and 3.200% Notes due 2027. | 8-K | 4.1 | 5/11/17 |\n| 4.15 | Officer's Certificate of the Registrant, dated as of May 24, 2017, including forms of global notes representing the 0.875% Notes due 2025 and 1.375% Notes due 2029. | 8-K | 4.1 | 5/24/17 |\n| 4.16 | Officer's Certificate of the Registrant, dated as of June 20, 2017, including form of global note representing the 3.000% Notes due 2027. | 8-K | 4.1 | 6/20/17 |\n| 4.17 | Officer's Certificate of the Registrant, dated as of September 12, 2017, including forms of global notes representing the 1.500% Notes due 2019, 2.100% Notes due 2022, 2.900% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 9/12/17 |\n| 4.18 | Officer's Certificate of the Registrant, dated as of November 13, 2017, including forms of global notes representing the 1.800% Notes due 2019, 2.000% Notes due 2020, 2.400% Notes due 2023, 2.750% Notes due 2025, 3.000% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 11/13/17 |\n| 4.19 | Indenture, dated as of November 5, 2018, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 11/5/18 |\n| 4.20 | Officer's Certificate of the Registrant, dated as of September 11, 2019, including forms of global notes representing the 1.700% Notes due 2022, 1.800% Notes due 2024, 2.050% Notes due 2026, 2.200% Notes due 2029 and 2.950% Notes due 2049. | 8-K | 4.1 | 9/11/19 |\n| 4.21 | Officer's Certificate of the Registrant, dated as of November 15, 2019, including forms of global notes representing the 0.000% Notes due 2025 and 0.500% Notes due 2031. | 8-K | 4.1 | 11/15/19 |\n| 4.22 | Officer's Certificate of the Registrant, dated as of May 11, 2020, including forms of global notes representing the 0.750% Notes due 2023, 1.125% Notes due 2025, 1.650% Notes due 2030 and 2.650% Notes due 2050. | 8-K | 4.1 | 5/11/20 |\n| 4.23 | Officer's Certificate of the Registrant, dated as of August 20, 2020, including forms of global notes representing the 0.550% Notes due 2025, 1.25% Notes due 2030, 2.400% Notes due 2050 and 2.550% Notes due 2060. | 8-K | 4.1 | 8/20/20 |\n| 4.24 | Officer's Certificate of the Registrant, dated as of February 8, 2021, including forms of global notes representing the 0.700% Notes due 2026, 1.200% Notes due 2028, 1.650% Notes due 2031, 2.375% Notes due 2041, 2.650% Notes due 2051 and 2.800% Notes due 2061. | 8-K | 4.1 | 2/8/21 |\n| 4.25 | Officer's Certificate of the Registrant, dated as of August 5, 2021, including forms of global notes representing the 1.400% Notes due 2028, 1.700% Notes due 2031, 2.700% Notes due 2051 and 2.850% Notes due 2061. | 8-K | 4.1 | 8/5/21 |\n| 4.26 | Indenture, dated as of October 28, 2021, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 10/29/21 |\n| 4.27 | Officer's Certificate of the Registrant, dated as of August 8, 2022, including forms of global notes representing the 3.250% Notes due 2029, 3.350% Notes due 2032, 3.950% Notes due 2052 and 4.100% Notes due 2062. | 8-K | 4.1 | 8/8/22 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.28 | Officer's Certificate of the Registrant, dated as of May 10, 2023, including forms of global notes representing the 4.421% Notes due 2026, 4.000% Notes due 2028, 4.150% Notes due 2030, 4.300% Notes due 2033 and 4.850% Notes due 2053. | 8-K | 4.1 | 5/10/23 |\n| 4.29* | Apple Inc.",
+          "score": 0.5937363505363464,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_chunk_43",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 1622,
+            "section_path": "['People: Balance Sheets, Comprehensive Income, Consolidated Balance']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "Exhibit and Financial Statement Schedules\n\n## (a) Documents filed as part of this report\n\n## (1) All financial statements\n\n| Index to Consolidated Financial Statements | Page |\n|-----------------------------------------------------------------------------------------------------------------------------------|--------|\n| Consolidated Statements of Operations for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 29 |\n| Consolidated Statements of Comprehensive Income for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 30 |\n| Consolidated Balance Sheets as of September 28, 2024 and September 30, 2023 | 31 |\n| Consolidated Statements of Shareholders' Equity for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 32 |\n| Consolidated Statements of Cash Flows for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 33 |\n| Notes to Consolidated Financial Statements | 34 |\n| Reports of Independent Registered Public Accounting Firm* | 48 |\n\n* Ernst &amp; Young LLP, PCAOB Firm ID No. 00042.\n\n## (2) Financial Statement Schedules\n\nAll financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes included in this Form 10-K.\n\n## (3) Exhibits required by Item 601 of Regulation S-K  (1)\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 3.1 | Restated Articles of Incorporation of the Registrant filed on August 3, 2020. | 8-K | 3.1 | 8/7/20 |\n| 3.2 | Amended and Restated Bylaws of the Registrant effective as of August 20, 2024. | 8-K | 3.2 | 8/23/24 |\n| 4.1** | Description of Securities of the Registrant. | | | |\n| 4.2 | Indenture, dated as of April 29, 2013, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 4/29/13 |\n| 4.3 | Officer's Certificate of the Registrant, dated as of May 3, 2013, including forms of global notes representing the Floating Rate Notes due 2016, Floating Rate Notes due 2018, 0.45% Notes due 2016, 1.00% Notes due 2018, 2.40% Notes due 2023 and 3.85% Notes due 2043. | 8-K | 4.1 | 5/3/13 |\n| 4.4 | Officer's Certificate of the Registrant, dated as of May 6, 2014, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2019, 1.05% Notes due 2017, 2.10% Notes due 2019, 2.85% Notes due 2021, 3.45% Notes due 2024 and 4.45% Notes due 2044. | 8-K | 4.1 | 5/6/14 |\n| 4.5 | Officer's Certificate of the Registrant, dated as of November 10, 2014, including forms of global notes representing the 1.000% Notes due 2022 and 1.625% Notes due 2026. | 8-K | 4.1 | 11/10/14 |\n| 4.6 | Officer's Certificate of the Registrant, dated as of February 9, 2015, including forms of global notes representing the Floating Rate Notes due 2020, 1.55% Notes due 2020, 2.15% Notes due 2022, 2.50% Notes due 2025 and 3.45% Notes due 2045. | 8-K | 4.1 | 2/9/15 |\n| 4.7 | Officer's Certificate of the Registrant, dated as of May 13, 2015, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2020, 0.900% Notes due 2017, 2.000% Notes due 2020, 2.700% Notes due 2022, 3.200% Notes due 2025, and 4.375% Notes due 2045. | 8-K | 4.1 | 5/13/15 |\n| 4.8 | Officer's Certificate of the Registrant, dated as of July 31, 2015, including forms of global notes representing the 3.05% Notes due 2029 and 3.60% Notes due 2042. | 8-K | 4.1 | 7/31/15 |\n| 4.9 | Officer's Certificate of the Registrant, dated as of September 17, 2015, including forms of global notes representing the 1.375% Notes due 2024 and 2.000% Notes due 2027. | 8-K | 4.1 | 9/17/15 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.10 | Officer's Certificate of the Registrant, dated as of February 23, 2016, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2021, 1.300% Notes due 2018, 1.700% Notes due 2019, 2.250% Notes due 2021, 2.850% Notes due 2023, 3.250% Notes due 2026, 4.500% Notes due 2036 and 4.650% Notes due 2046. | 8-K | 4.1 | 2/23/16 |\n| 4.11 | Supplement No. 1 to the Officer's Certificate of the Registrant, dated as of March 24, 2016. | 8-K | 4.1 | 3/24/16 |\n| 4.12 | Officer's Certificate of the Registrant, dated as of August 4, 2016, including forms of global notes representing the Floating Rate Notes due 2019, 1.100% Notes due 2019, 1.550% Notes due 2021, 2.450% Notes due 2026 and 3.850% Notes due 2046. | 8-K | 4.1 | 8/4/16 |\n| 4.13 | Officer's Certificate of the Registrant, dated as of February 9, 2017, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.550% Notes due 2019, 1.900% Notes due 2020, 2.500% Notes due 2022, 3.000% Notes due 2024, 3.350% Notes due 2027 and 4.250% Notes due 2047. | 8-K | 4.1 | 2/9/17 |\n| 4.14 | Officer's Certificate of the Registrant, dated as of May 11, 2017, including forms of global notes representing the Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.800% Notes due 2020, 2.300% Notes due 2022, 2.850% Notes due 2024 and 3.200% Notes due 2027. | 8-K | 4.1 | 5/11/17 |\n| 4.15 | Officer's Certificate of the Registrant, dated as of May 24, 2017, including forms of global notes representing the 0.875% Notes due 2025 and 1.375% Notes due 2029. | 8-K | 4.1 | 5/24/17 |\n| 4.16 | Officer's Certificate of the Registrant, dated as of June 20, 2017, including form of global note representing the 3.000% Notes due 2027. | 8-K | 4.1 | 6/20/17 |\n| 4.17 | Officer's Certificate of the Registrant, dated as of September 12, 2017, including forms of global notes representing the 1.500% Notes due 2019, 2.100% Notes due 2022, 2.900% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 9/12/17 |\n| 4.18 | Officer's Certificate of the Registrant, dated as of November 13, 2017, including forms of global notes representing the 1.800% Notes due 2019, 2.000% Notes due 2020, 2.400% Notes due 2023, 2.750% Notes due 2025, 3.000% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 11/13/17 |\n| 4.19 | Indenture, dated as of November 5, 2018, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 11/5/18 |\n| 4.20 | Officer's Certificate of the Registrant, dated as of September 11, 2019, including forms of global notes representing the 1.700% Notes due 2022, 1.800% Notes due 2024, 2.050% Notes due 2026, 2.200% Notes due 2029 and 2.950% Notes due 2049. | 8-K | 4.1 | 9/11/19 |\n| 4.21 | Officer's Certificate of the Registrant, dated as of November 15, 2019, including forms of global notes representing the 0.000% Notes due 2025 and 0.500% Notes due 2031. | 8-K | 4.1 | 11/15/19 |\n| 4.22 | Officer's Certificate of the Registrant, dated as of May 11, 2020, including forms of global notes representing the 0.750% Notes due 2023, 1.125% Notes due 2025, 1.650% Notes due 2030 and 2.650% Notes due 2050. | 8-K | 4.1 | 5/11/20 |\n| 4.23 | Officer's Certificate of the Registrant, dated as of August 20, 2020, including forms of global notes representing the 0.550% Notes due 2025, 1.25% Notes due 2030, 2.400% Notes due 2050 and 2.550% Notes due 2060. | 8-K | 4.1 | 8/20/20 |\n| 4.24 | Officer's Certificate of the Registrant, dated as of February 8, 2021, including forms of global notes representing the 0.700% Notes due 2026, 1.200% Notes due 2028, 1.650% Notes due 2031, 2.375% Notes due 2041, 2.650% Notes due 2051 and 2.800% Notes due 2061. | 8-K | 4.1 | 2/8/21 |\n| 4.25 | Officer's Certificate of the Registrant, dated as of August 5, 2021, including forms of global notes representing the 1.400% Notes due 2028, 1.700% Notes due 2031, 2.700% Notes due 2051 and 2.850% Notes due 2061. | 8-K | 4.1 | 8/5/21 |\n| 4.26 | Indenture, dated as of October 28, 2021, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 10/29/21 |\n| 4.27 | Officer's Certificate of the Registrant, dated as of August 8, 2022, including forms of global notes representing the 3.250% Notes due 2029, 3.350% Notes due 2032, 3.950% Notes due 2052 and 4.100% Notes due 2062. | 8-K | 4.1 | 8/8/22 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.28 | Officer's Certificate of the Registrant, dated as of May 10, 2023, including forms of global notes representing the 4.421% Notes due 2026, 4.000% Notes due 2028, 4.150% Notes due 2030, 4.300% Notes due 2033 and 4.850% Notes due 2053. | 8-K | 4.1 | 5/10/23 |\n| 4.29* | Apple Inc.",
+          "score": 0.5937363505363464,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_chunk_43",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 1622,
+            "section_path": "['People: Balance Sheets, Comprehensive Income, Consolidated Balance']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "|  | September 2019 | September 2020 | September 2021 | September 2022 | September 2023 | September 2024 |\n|---|---|---|---|---|---|---|\n| Apple Inc. | $ 100 | $ 207 | $ 273 | $ 281 | $ 322 | $ 430 |\n| S&P 500 Index | $ 100 | $ 113 | $ 156 | $ 131 | $ 155 | $ 210 |\n| Dow Jones U.S. Technology Supersector Index | $ 100 | $ 146 | $ 216 | $ 156 | $ 215 | $ 322 |",
+          "score": 0.5909830331802368,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_table_2",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 92,
+            "section_path": "['People: Dow Jones, Supersector Index, Technology Supersector']",
+            "chunk_type": "unknown"
+          }
+        }
+      ],
+      "context_length": 3887,
+      "llm_response": {
+        "query": "tell me about eps this year",
+        "method": "layout_aware_chunking",
+        "context": "",
+        "answer": "The provided documents do not contain any information regarding earnings per share (EPS) for this year or any other year. Therefore, I cannot provide an answer to your question about EPS.",
+        "timestamp": "2025-09-03T00:54:36.292525",
+        "tokens_used": 36
+      },
+      "timing": {
+        "vector_search_time": 0.18392348289489746,
+        "rerank_time": 0.0,
+        "context_time": 0.0,
+        "llm_time": 1.6601283550262451,
+        "total_time": 2.0525286197662354
+      },
+      "resources": {
+        "initial": {
+          "memory_used_mb": 14790.1,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 95.0,
+          "cpu_percent": 16.8,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "final": {
+          "memory_used_mb": 14853.4,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 95.4,
+          "cpu_percent": 16.7,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "peak_memory_mb": 14853.4,
+        "peak_cpu_percent": 16.8
+      }
+    },
+    "tokens_used": 36,
+    "timing": {
+      "vector_search_time": 0.18392348289489746,
+      "rerank_time": 0.0,
+      "context_time": 0.0,
+      "llm_time": 1.6601283550262451,
+      "total_time": 2.0525286197662354
+    },
+    "resources": {
+      "initial": {
+        "memory_used_mb": 14790.1,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 95.0,
+        "cpu_percent": 16.8,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "final": {
+        "memory_used_mb": 14853.4,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 95.4,
+        "cpu_percent": 16.7,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "peak_memory_mb": 14853.4,
+      "peak_cpu_percent": 16.8
+    }
+  },
+  {
+    "timestamp": "2025-09-03T00:54:36.5151Z",
+    "query": "tell me about eps this year",
+    "result": {
+      "retrieved_chunks": [
+        {
+          "content": "Information By Reportable\n\nThe following table shows information by reportable segment for 2024, 2023 and 2022 (in millions):\n\nshows information by reportable segment for 2024, 2023 and 2022 (in millions):\n\n|  | 2024 | 2023 | 2022 |\n|---|---|---|---|\n| Americas: |  |  |  |\n| Net sales | $ 167,045 | $ 162,560 | $ 169,658 |\n| Operating income | $ 67,656 | $ 60,508 | $ 62,683 |\n| Europe: |  |  |  |\n| Net sales | $ 101,328 | $ 94,294 | $ 95,118 |\n| Operating income | $ 41,790 | $ 36,098 | $ 35,233 |\n| Greater China: |  |  |  |\n| Net sales | $ 66,952 | $ 72,559 | $ 74,200 |\n| Operating income | $ 27,082 | $ 30,328 | $ 31,153 |\n| Japan: |  |  |  |\n| Net sales | $ 25,052 | $ 24,257 | $ 25,977 |\n| Operating income | $ 12,454 | $ 11,888 | $ 12,257 |\n| Rest of Asia Pacific: |  |  |  |\n| Net sales | $ 30,658 | $ 29,615 | $ 29,375 |\n| Operating income | $ 13,062 | $ 12,066 | $ 11,569 |",
+          "score": 0.6061239242553711,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_table_38",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 203,
+            "section_path": "['People: Asia Pacific, Greater China']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "| Name | Title | Date |\n|---|---|---|\n| /s/ Timothy D. Cook | Chief Executive Officer and Director (Principal Executive Officer) | November 1, 2024 |\n| TIMOTHY D. COOK |  |  |\n| /s/ Luca Maestri | Senior Vice President, Chief Financial Officer (Principal Financial Officer) | November 1, 2024 |\n| LUCA MAESTRI |  |  |\n| /s/ Chris Kondo | Senior Director of Corporate Accounting (Principal Accounting Officer) | November 1, 2024 |\n| CHRIS KONDO |  |  |\n| /s/ Wanda Austin | Director | November 1, 2024 |\n| WANDA AUSTIN |  |  |\n| /s/ Alex Gorsky | Director | November 1, 2024 |\n| ALEX GORSKY |  |  |\n| /s/ Andrea Jung | Director | November 1, 2024 |\n| ANDREA JUNG |  |  |\n| /s/ Arthur D. Levinson | Director and Chair of the Board | November 1, 2024 |\n| ARTHUR D. LEVINSON |  |  |\n| /s/ Monica Lozano | Director | November 1, 2024 |\n| MONICA LOZANO |  |  |\n| /s/ Ronald D. Sugar | Director | November 1, 2024 |\n| RONALD D. SUGAR |  |  |\n| /s/ Susan L. Wagner | Director | November 1, 2024 |",
+          "score": 0.6029233336448669,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_table_47",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 206,
+            "section_path": "['People: Chief Executive, Chief Financial, Executive Officer']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "Exhibit and Financial Statement Schedules\n\n## (a) Documents filed as part of this report\n\n## (1) All financial statements\n\n| Index to Consolidated Financial Statements | Page |\n|-----------------------------------------------------------------------------------------------------------------------------------|--------|\n| Consolidated Statements of Operations for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 29 |\n| Consolidated Statements of Comprehensive Income for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 30 |\n| Consolidated Balance Sheets as of September 28, 2024 and September 30, 2023 | 31 |\n| Consolidated Statements of Shareholders' Equity for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 32 |\n| Consolidated Statements of Cash Flows for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 33 |\n| Notes to Consolidated Financial Statements | 34 |\n| Reports of Independent Registered Public Accounting Firm* | 48 |\n\n* Ernst &amp; Young LLP, PCAOB Firm ID No. 00042.\n\n## (2) Financial Statement Schedules\n\nAll financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes included in this Form 10-K.\n\n## (3) Exhibits required by Item 601 of Regulation S-K  (1)\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 3.1 | Restated Articles of Incorporation of the Registrant filed on August 3, 2020. | 8-K | 3.1 | 8/7/20 |\n| 3.2 | Amended and Restated Bylaws of the Registrant effective as of August 20, 2024. | 8-K | 3.2 | 8/23/24 |\n| 4.1** | Description of Securities of the Registrant. | | | |\n| 4.2 | Indenture, dated as of April 29, 2013, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 4/29/13 |\n| 4.3 | Officer's Certificate of the Registrant, dated as of May 3, 2013, including forms of global notes representing the Floating Rate Notes due 2016, Floating Rate Notes due 2018, 0.45% Notes due 2016, 1.00% Notes due 2018, 2.40% Notes due 2023 and 3.85% Notes due 2043. | 8-K | 4.1 | 5/3/13 |\n| 4.4 | Officer's Certificate of the Registrant, dated as of May 6, 2014, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2019, 1.05% Notes due 2017, 2.10% Notes due 2019, 2.85% Notes due 2021, 3.45% Notes due 2024 and 4.45% Notes due 2044. | 8-K | 4.1 | 5/6/14 |\n| 4.5 | Officer's Certificate of the Registrant, dated as of November 10, 2014, including forms of global notes representing the 1.000% Notes due 2022 and 1.625% Notes due 2026. | 8-K | 4.1 | 11/10/14 |\n| 4.6 | Officer's Certificate of the Registrant, dated as of February 9, 2015, including forms of global notes representing the Floating Rate Notes due 2020, 1.55% Notes due 2020, 2.15% Notes due 2022, 2.50% Notes due 2025 and 3.45% Notes due 2045. | 8-K | 4.1 | 2/9/15 |\n| 4.7 | Officer's Certificate of the Registrant, dated as of May 13, 2015, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2020, 0.900% Notes due 2017, 2.000% Notes due 2020, 2.700% Notes due 2022, 3.200% Notes due 2025, and 4.375% Notes due 2045. | 8-K | 4.1 | 5/13/15 |\n| 4.8 | Officer's Certificate of the Registrant, dated as of July 31, 2015, including forms of global notes representing the 3.05% Notes due 2029 and 3.60% Notes due 2042. | 8-K | 4.1 | 7/31/15 |\n| 4.9 | Officer's Certificate of the Registrant, dated as of September 17, 2015, including forms of global notes representing the 1.375% Notes due 2024 and 2.000% Notes due 2027. | 8-K | 4.1 | 9/17/15 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.10 | Officer's Certificate of the Registrant, dated as of February 23, 2016, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2021, 1.300% Notes due 2018, 1.700% Notes due 2019, 2.250% Notes due 2021, 2.850% Notes due 2023, 3.250% Notes due 2026, 4.500% Notes due 2036 and 4.650% Notes due 2046. | 8-K | 4.1 | 2/23/16 |\n| 4.11 | Supplement No. 1 to the Officer's Certificate of the Registrant, dated as of March 24, 2016. | 8-K | 4.1 | 3/24/16 |\n| 4.12 | Officer's Certificate of the Registrant, dated as of August 4, 2016, including forms of global notes representing the Floating Rate Notes due 2019, 1.100% Notes due 2019, 1.550% Notes due 2021, 2.450% Notes due 2026 and 3.850% Notes due 2046. | 8-K | 4.1 | 8/4/16 |\n| 4.13 | Officer's Certificate of the Registrant, dated as of February 9, 2017, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.550% Notes due 2019, 1.900% Notes due 2020, 2.500% Notes due 2022, 3.000% Notes due 2024, 3.350% Notes due 2027 and 4.250% Notes due 2047. | 8-K | 4.1 | 2/9/17 |\n| 4.14 | Officer's Certificate of the Registrant, dated as of May 11, 2017, including forms of global notes representing the Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.800% Notes due 2020, 2.300% Notes due 2022, 2.850% Notes due 2024 and 3.200% Notes due 2027. | 8-K | 4.1 | 5/11/17 |\n| 4.15 | Officer's Certificate of the Registrant, dated as of May 24, 2017, including forms of global notes representing the 0.875% Notes due 2025 and 1.375% Notes due 2029. | 8-K | 4.1 | 5/24/17 |\n| 4.16 | Officer's Certificate of the Registrant, dated as of June 20, 2017, including form of global note representing the 3.000% Notes due 2027. | 8-K | 4.1 | 6/20/17 |\n| 4.17 | Officer's Certificate of the Registrant, dated as of September 12, 2017, including forms of global notes representing the 1.500% Notes due 2019, 2.100% Notes due 2022, 2.900% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 9/12/17 |\n| 4.18 | Officer's Certificate of the Registrant, dated as of November 13, 2017, including forms of global notes representing the 1.800% Notes due 2019, 2.000% Notes due 2020, 2.400% Notes due 2023, 2.750% Notes due 2025, 3.000% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 11/13/17 |\n| 4.19 | Indenture, dated as of November 5, 2018, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 11/5/18 |\n| 4.20 | Officer's Certificate of the Registrant, dated as of September 11, 2019, including forms of global notes representing the 1.700% Notes due 2022, 1.800% Notes due 2024, 2.050% Notes due 2026, 2.200% Notes due 2029 and 2.950% Notes due 2049. | 8-K | 4.1 | 9/11/19 |\n| 4.21 | Officer's Certificate of the Registrant, dated as of November 15, 2019, including forms of global notes representing the 0.000% Notes due 2025 and 0.500% Notes due 2031. | 8-K | 4.1 | 11/15/19 |\n| 4.22 | Officer's Certificate of the Registrant, dated as of May 11, 2020, including forms of global notes representing the 0.750% Notes due 2023, 1.125% Notes due 2025, 1.650% Notes due 2030 and 2.650% Notes due 2050. | 8-K | 4.1 | 5/11/20 |\n| 4.23 | Officer's Certificate of the Registrant, dated as of August 20, 2020, including forms of global notes representing the 0.550% Notes due 2025, 1.25% Notes due 2030, 2.400% Notes due 2050 and 2.550% Notes due 2060. | 8-K | 4.1 | 8/20/20 |\n| 4.24 | Officer's Certificate of the Registrant, dated as of February 8, 2021, including forms of global notes representing the 0.700% Notes due 2026, 1.200% Notes due 2028, 1.650% Notes due 2031, 2.375% Notes due 2041, 2.650% Notes due 2051 and 2.800% Notes due 2061. | 8-K | 4.1 | 2/8/21 |\n| 4.25 | Officer's Certificate of the Registrant, dated as of August 5, 2021, including forms of global notes representing the 1.400% Notes due 2028, 1.700% Notes due 2031, 2.700% Notes due 2051 and 2.850% Notes due 2061. | 8-K | 4.1 | 8/5/21 |\n| 4.26 | Indenture, dated as of October 28, 2021, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 10/29/21 |\n| 4.27 | Officer's Certificate of the Registrant, dated as of August 8, 2022, including forms of global notes representing the 3.250% Notes due 2029, 3.350% Notes due 2032, 3.950% Notes due 2052 and 4.100% Notes due 2062. | 8-K | 4.1 | 8/8/22 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.28 | Officer's Certificate of the Registrant, dated as of May 10, 2023, including forms of global notes representing the 4.421% Notes due 2026, 4.000% Notes due 2028, 4.150% Notes due 2030, 4.300% Notes due 2033 and 4.850% Notes due 2053. | 8-K | 4.1 | 5/10/23 |\n| 4.29* | Apple Inc.",
+          "score": 0.5937363505363464,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_chunk_43",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 1622,
+            "section_path": "['People: Balance Sheets, Comprehensive Income, Consolidated Balance']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "Exhibit and Financial Statement Schedules\n\n## (a) Documents filed as part of this report\n\n## (1) All financial statements\n\n| Index to Consolidated Financial Statements | Page |\n|-----------------------------------------------------------------------------------------------------------------------------------|--------|\n| Consolidated Statements of Operations for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 29 |\n| Consolidated Statements of Comprehensive Income for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 30 |\n| Consolidated Balance Sheets as of September 28, 2024 and September 30, 2023 | 31 |\n| Consolidated Statements of Shareholders' Equity for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 32 |\n| Consolidated Statements of Cash Flows for the years ended September 28, 2024, September 30, 2023 and September 24, 2022 | 33 |\n| Notes to Consolidated Financial Statements | 34 |\n| Reports of Independent Registered Public Accounting Firm* | 48 |\n\n* Ernst &amp; Young LLP, PCAOB Firm ID No. 00042.\n\n## (2) Financial Statement Schedules\n\nAll financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes included in this Form 10-K.\n\n## (3) Exhibits required by Item 601 of Regulation S-K  (1)\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 3.1 | Restated Articles of Incorporation of the Registrant filed on August 3, 2020. | 8-K | 3.1 | 8/7/20 |\n| 3.2 | Amended and Restated Bylaws of the Registrant effective as of August 20, 2024. | 8-K | 3.2 | 8/23/24 |\n| 4.1** | Description of Securities of the Registrant. | | | |\n| 4.2 | Indenture, dated as of April 29, 2013, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 4/29/13 |\n| 4.3 | Officer's Certificate of the Registrant, dated as of May 3, 2013, including forms of global notes representing the Floating Rate Notes due 2016, Floating Rate Notes due 2018, 0.45% Notes due 2016, 1.00% Notes due 2018, 2.40% Notes due 2023 and 3.85% Notes due 2043. | 8-K | 4.1 | 5/3/13 |\n| 4.4 | Officer's Certificate of the Registrant, dated as of May 6, 2014, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2019, 1.05% Notes due 2017, 2.10% Notes due 2019, 2.85% Notes due 2021, 3.45% Notes due 2024 and 4.45% Notes due 2044. | 8-K | 4.1 | 5/6/14 |\n| 4.5 | Officer's Certificate of the Registrant, dated as of November 10, 2014, including forms of global notes representing the 1.000% Notes due 2022 and 1.625% Notes due 2026. | 8-K | 4.1 | 11/10/14 |\n| 4.6 | Officer's Certificate of the Registrant, dated as of February 9, 2015, including forms of global notes representing the Floating Rate Notes due 2020, 1.55% Notes due 2020, 2.15% Notes due 2022, 2.50% Notes due 2025 and 3.45% Notes due 2045. | 8-K | 4.1 | 2/9/15 |\n| 4.7 | Officer's Certificate of the Registrant, dated as of May 13, 2015, including forms of global notes representing the Floating Rate Notes due 2017, Floating Rate Notes due 2020, 0.900% Notes due 2017, 2.000% Notes due 2020, 2.700% Notes due 2022, 3.200% Notes due 2025, and 4.375% Notes due 2045. | 8-K | 4.1 | 5/13/15 |\n| 4.8 | Officer's Certificate of the Registrant, dated as of July 31, 2015, including forms of global notes representing the 3.05% Notes due 2029 and 3.60% Notes due 2042. | 8-K | 4.1 | 7/31/15 |\n| 4.9 | Officer's Certificate of the Registrant, dated as of September 17, 2015, including forms of global notes representing the 1.375% Notes due 2024 and 2.000% Notes due 2027. | 8-K | 4.1 | 9/17/15 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.10 | Officer's Certificate of the Registrant, dated as of February 23, 2016, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2021, 1.300% Notes due 2018, 1.700% Notes due 2019, 2.250% Notes due 2021, 2.850% Notes due 2023, 3.250% Notes due 2026, 4.500% Notes due 2036 and 4.650% Notes due 2046. | 8-K | 4.1 | 2/23/16 |\n| 4.11 | Supplement No. 1 to the Officer's Certificate of the Registrant, dated as of March 24, 2016. | 8-K | 4.1 | 3/24/16 |\n| 4.12 | Officer's Certificate of the Registrant, dated as of August 4, 2016, including forms of global notes representing the Floating Rate Notes due 2019, 1.100% Notes due 2019, 1.550% Notes due 2021, 2.450% Notes due 2026 and 3.850% Notes due 2046. | 8-K | 4.1 | 8/4/16 |\n| 4.13 | Officer's Certificate of the Registrant, dated as of February 9, 2017, including forms of global notes representing the Floating Rate Notes due 2019, Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.550% Notes due 2019, 1.900% Notes due 2020, 2.500% Notes due 2022, 3.000% Notes due 2024, 3.350% Notes due 2027 and 4.250% Notes due 2047. | 8-K | 4.1 | 2/9/17 |\n| 4.14 | Officer's Certificate of the Registrant, dated as of May 11, 2017, including forms of global notes representing the Floating Rate Notes due 2020, Floating Rate Notes due 2022, 1.800% Notes due 2020, 2.300% Notes due 2022, 2.850% Notes due 2024 and 3.200% Notes due 2027. | 8-K | 4.1 | 5/11/17 |\n| 4.15 | Officer's Certificate of the Registrant, dated as of May 24, 2017, including forms of global notes representing the 0.875% Notes due 2025 and 1.375% Notes due 2029. | 8-K | 4.1 | 5/24/17 |\n| 4.16 | Officer's Certificate of the Registrant, dated as of June 20, 2017, including form of global note representing the 3.000% Notes due 2027. | 8-K | 4.1 | 6/20/17 |\n| 4.17 | Officer's Certificate of the Registrant, dated as of September 12, 2017, including forms of global notes representing the 1.500% Notes due 2019, 2.100% Notes due 2022, 2.900% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 9/12/17 |\n| 4.18 | Officer's Certificate of the Registrant, dated as of November 13, 2017, including forms of global notes representing the 1.800% Notes due 2019, 2.000% Notes due 2020, 2.400% Notes due 2023, 2.750% Notes due 2025, 3.000% Notes due 2027 and 3.750% Notes due 2047. | 8-K | 4.1 | 11/13/17 |\n| 4.19 | Indenture, dated as of November 5, 2018, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 11/5/18 |\n| 4.20 | Officer's Certificate of the Registrant, dated as of September 11, 2019, including forms of global notes representing the 1.700% Notes due 2022, 1.800% Notes due 2024, 2.050% Notes due 2026, 2.200% Notes due 2029 and 2.950% Notes due 2049. | 8-K | 4.1 | 9/11/19 |\n| 4.21 | Officer's Certificate of the Registrant, dated as of November 15, 2019, including forms of global notes representing the 0.000% Notes due 2025 and 0.500% Notes due 2031. | 8-K | 4.1 | 11/15/19 |\n| 4.22 | Officer's Certificate of the Registrant, dated as of May 11, 2020, including forms of global notes representing the 0.750% Notes due 2023, 1.125% Notes due 2025, 1.650% Notes due 2030 and 2.650% Notes due 2050. | 8-K | 4.1 | 5/11/20 |\n| 4.23 | Officer's Certificate of the Registrant, dated as of August 20, 2020, including forms of global notes representing the 0.550% Notes due 2025, 1.25% Notes due 2030, 2.400% Notes due 2050 and 2.550% Notes due 2060. | 8-K | 4.1 | 8/20/20 |\n| 4.24 | Officer's Certificate of the Registrant, dated as of February 8, 2021, including forms of global notes representing the 0.700% Notes due 2026, 1.200% Notes due 2028, 1.650% Notes due 2031, 2.375% Notes due 2041, 2.650% Notes due 2051 and 2.800% Notes due 2061. | 8-K | 4.1 | 2/8/21 |\n| 4.25 | Officer's Certificate of the Registrant, dated as of August 5, 2021, including forms of global notes representing the 1.400% Notes due 2028, 1.700% Notes due 2031, 2.700% Notes due 2051 and 2.850% Notes due 2061. | 8-K | 4.1 | 8/5/21 |\n| 4.26 | Indenture, dated as of October 28, 2021, between the Registrant and The Bank of New York Mellon Trust Company, N.A., as Trustee. | S-3 | 4.1 | 10/29/21 |\n| 4.27 | Officer's Certificate of the Registrant, dated as of August 8, 2022, including forms of global notes representing the 3.250% Notes due 2029, 3.350% Notes due 2032, 3.950% Notes due 2052 and 4.100% Notes due 2062. | 8-K | 4.1 | 8/8/22 |\n\n| | | Incorporated by Reference | Incorporated by Reference | Incorporated by Reference |\n|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-----------------------------|------------------------------|\n| Exhibit Number | Exhibit Description | Form | Exhibit | Filing Date/ Period End Date |\n| 4.28 | Officer's Certificate of the Registrant, dated as of May 10, 2023, including forms of global notes representing the 4.421% Notes due 2026, 4.000% Notes due 2028, 4.150% Notes due 2030, 4.300% Notes due 2033 and 4.850% Notes due 2053. | 8-K | 4.1 | 5/10/23 |\n| 4.29* | Apple Inc.",
+          "score": 0.5937363505363464,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_chunk_43",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 1622,
+            "section_path": "['People: Balance Sheets, Comprehensive Income, Consolidated Balance']",
+            "chunk_type": "unknown"
+          }
+        },
+        {
+          "content": "|  | September 2019 | September 2020 | September 2021 | September 2022 | September 2023 | September 2024 |\n|---|---|---|---|---|---|---|\n| Apple Inc. | $ 100 | $ 207 | $ 273 | $ 281 | $ 322 | $ 430 |\n| S&P 500 Index | $ 100 | $ 113 | $ 156 | $ 131 | $ 155 | $ 210 |\n| Dow Jones U.S. Technology Supersector Index | $ 100 | $ 146 | $ 216 | $ 156 | $ 215 | $ 322 |",
+          "score": 0.5909830331802368,
+          "metadata": {
+            "chunk_id": "10-Q4-2024-As-Filed_table_2",
+            "doc_id": "10-Q4-2024-As-Filed",
+            "word_count": 92,
+            "section_path": "['People: Dow Jones, Supersector Index, Technology Supersector']",
+            "chunk_type": "unknown"
+          }
+        }
+      ],
+      "context_length": 3887,
+      "llm_response": {
+        "query": "tell me about eps this year",
+        "method": "layout_aware_chunking",
+        "context": "",
+        "answer": "The provided documents do not contain any information regarding earnings per share (EPS) for this year or any other year. Therefore, I cannot provide an answer to your question about EPS.",
+        "timestamp": "2025-09-03T00:54:36.515169",
+        "tokens_used": 36
+      },
+      "timing": {
+        "vector_search_time": 0.18392348289489746,
+        "rerank_time": 0.0,
+        "context_time": 0,
+        "llm_time": 1.6601283550262451,
+        "total_time": 2.3770182132720947
+      },
+      "resources": {
+        "initial": {
+          "memory_used_mb": 14799.9,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 95.1,
+          "cpu_percent": 22.9,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "final": {
+          "memory_used_mb": 14837.1,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 95.3,
+          "cpu_percent": 8.0,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "peak_memory_mb": 14837.1,
+        "peak_cpu_percent": 22.9
+      }
+    },
+    "tokens_used": 36,
+    "timing": {
+      "vector_search_time": 0.18392348289489746,
+      "rerank_time": 0.0,
+      "context_time": 0,
+      "llm_time": 1.6601283550262451,
+      "total_time": 2.3770182132720947
+    },
+    "resources": {
+      "initial": {
+        "memory_used_mb": 14799.9,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 95.1,
+        "cpu_percent": 22.9,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "final": {
+        "memory_used_mb": 14837.1,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 95.3,
+        "cpu_percent": 8.0,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "peak_memory_mb": 14837.1,
+      "peak_cpu_percent": 22.9
+    }
+  },
+  {
+    "timestamp": "2025-09-03T02:24:21.6099Z",
+    "query": "What are the key financial metrics and performance indicators?",
+    "result": {
+      "retrieved_chunks": [],
+      "context_length": 0,
+      "llm_response": {
+        "query": "What are the key financial metrics and performance indicators?",
+        "method": "layout_aware_chunking",
+        "context": "",
+        "answer": "Error: System not connected",
+        "timestamp": "2025-09-03T02:24:21.610040",
+        "tokens_used": 0
+      },
+      "timing": {
+        "vector_search_time": 0,
+        "rerank_time": 0.0,
+        "context_time": 0,
+        "llm_time": 0,
+        "total_time": 0.0004994869232177734
+      },
+      "resources": {
+        "initial": {
+          "memory_used_mb": 10492.1,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 67.4,
+          "cpu_percent": 12.4,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "final": {
+          "memory_used_mb": 10492.8,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 67.4,
+          "cpu_percent": 12.5,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "peak_memory_mb": 10492.8,
+        "peak_cpu_percent": 12.5
+      }
+    },
+    "tokens_used": 0,
+    "timing": {
+      "vector_search_time": 0,
+      "rerank_time": 0.0,
+      "context_time": 0,
+      "llm_time": 0,
+      "total_time": 0.0004994869232177734
+    },
+    "resources": {
+      "initial": {
+        "memory_used_mb": 10492.1,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 67.4,
+        "cpu_percent": 12.4,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "final": {
+        "memory_used_mb": 10492.8,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 67.4,
+        "cpu_percent": 12.5,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "peak_memory_mb": 10492.8,
+      "peak_cpu_percent": 12.5
+    }
+  },
+  {
+    "timestamp": "2025-09-03T02:24:35.6445Z",
+    "query": "What are the key financial metrics and performance indicators?",
+    "result": {
+      "retrieved_chunks": [],
+      "context_length": 0,
+      "llm_response": {
+        "query": "What are the key financial metrics and performance indicators?",
+        "method": "layout_aware_chunking",
+        "context": "",
+        "answer": "Error: System not connected",
+        "timestamp": "2025-09-03T02:24:35.644644",
+        "tokens_used": 0
+      },
+      "timing": {
+        "vector_search_time": 0,
+        "rerank_time": 0,
+        "context_time": 0,
+        "llm_time": 0,
+        "total_time": 0.0005290508270263672
+      },
+      "resources": {
+        "initial": {
+          "memory_used_mb": 10528.3,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 67.6,
+          "cpu_percent": 23.3,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "final": {
+          "memory_used_mb": 10528.3,
+          "memory_total_mb": 15569.9,
+          "memory_percent": 67.6,
+          "cpu_percent": 5.6,
+          "gpu": {
+            "gpu_available": false,
+            "gpuutil_not_installed": true
+          }
+        },
+        "peak_memory_mb": 10528.3,
+        "peak_cpu_percent": 23.3
+      }
+    },
+    "tokens_used": 0,
+    "timing": {
+      "vector_search_time": 0,
+      "rerank_time": 0,
+      "context_time": 0,
+      "llm_time": 0,
+      "total_time": 0.0005290508270263672
+    },
+    "resources": {
+      "initial": {
+        "memory_used_mb": 10528.3,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 67.6,
+        "cpu_percent": 23.3,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "final": {
+        "memory_used_mb": 10528.3,
+        "memory_total_mb": 15569.9,
+        "memory_percent": 67.6,
+        "cpu_percent": 5.6,
+        "gpu": {
+          "gpu_available": false,
+          "gpuutil_not_installed": true
+        }
+      },
+      "peak_memory_mb": 10528.3,
+      "peak_cpu_percent": 23.3
+    }
   }
 ]

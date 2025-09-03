@@ -1,0 +1,65 @@
+Graph-RAG Document Processing Results
+==================================================
+
+Total chunks generated: 94
+Chunks with embeddings: 0
+Average words per chunk: 718.2
+Total tokens processed: 246,498
+
+Chunk ID: 10-Q4-2024-As-Filed_chunk_1
+Document: 10-Q4-2024-As-Filed
+Word count: 699
+Has embedding: No
+Section info: People: AND EXCHANGE, ANNUAL REPORT, COMMISSION Washington
+Content preview: ## UNITED STATES
+
+## SECURITIES AND EXCHANGE COMMISSION Washington, D.C. 20549
+
+## FORM 10-K
+
+<!-- image -->
+
+(Mark One)
+
+ANNUAL REPORT PURSUANT TO SECTION 13 OR 15(d) OF THE SECURITIES EXCHANGE ACT O...
+--------------------------------------------------
+
+Chunk ID: 10-Q4-2024-As-Filed_chunk_2
+Document: 10-Q4-2024-As-Filed
+Word count: 740
+Has embedding: No
+Section info: People: Annual Report, BY REFERENCE, DOCUMENTS INCORPORATED
+Content preview: Solely for purposes of this disclosure, shares of common stock held by executive officers and directors of the Registrant as of such date have been excluded because such persons may be deemed to be af...
+--------------------------------------------------
+
+Chunk ID: 10-Q4-2024-As-Filed_chunk_3
+Document: 10-Q4-2024-As-Filed
+Word count: 703
+Has embedding: No
+Section info: People: Accessories Wearables, Apple Watch, Mac Mac
+Content preview: Each of the terms the 'Company' and 'Apple' as used herein refers collectively to Apple Inc. and its wholly owned subsidiaries, unless otherwise stated.
+
+## PART I
+
+## Item 1. Business
+
+## Company Bac...
+--------------------------------------------------
+
+Chunk ID: 10-Q4-2024-As-Filed_chunk_4
+Document: 10-Q4-2024-As-Filed
+Word count: 707
+Has embedding: No
+Section info: People: Components Although, Development Because, Intellectual Property
+Content preview: The Company also employs a variety of indirect distribution channels, such as third-party cellular network carriers, wholesalers, retailers and resellers. During 2024, the Company's net sales through ...
+--------------------------------------------------
+
+Chunk ID: 10-Q4-2024-As-Filed_chunk_5
+Document: 10-Q4-2024-As-Filed
+Word count: 716
+Has embedding: No
+Section info: People: Apple University, Business Seasonality, Human Capital
+Content preview: This includes patents, designs, copyrights, trademarks, trade secrets and other forms of intellectual property rights in the U.S. and various foreign countries. Although the Company believes the owner...
+--------------------------------------------------
+
+... and 89 more chunks
