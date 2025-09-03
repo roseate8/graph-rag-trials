@@ -19,14 +19,14 @@ except ImportError:
     from base import BaseReRanker, ReRankResult, ModelLoadError, ReRankingError
     from config import ReRankerConfig
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('reranker_model')
 
 
 class BGEReRanker(BaseReRanker):
-    """BGE re-ranker implementation using BAAI models."""
+    """Cross-encoder re-ranker implementation supporting BGE and MS-MARCO models."""
     
     def __init__(self, config: Optional[ReRankerConfig] = None):
-        """Initialize BGE re-ranker.
+        """Initialize cross-encoder re-ranker.
         
         Args:
             config: Re-ranker configuration. If None, uses default config.
@@ -39,7 +39,7 @@ class BGEReRanker(BaseReRanker):
         self.device = self._determine_device()
         self._score_cache = OrderedDict() if self.config.enable_caching else None
         
-        logger.info(f"Initialized BGE re-ranker with device: {self.device}")
+        logger.info(f"Initialized cross-encoder re-ranker with device: {self.device}")
     
     def _determine_device(self) -> str:
         """Determine the best device to use."""
@@ -54,9 +54,9 @@ class BGEReRanker(BaseReRanker):
             return self.config.device
     
     def load_model(self) -> bool:
-        """Load the BGE re-ranker model and tokenizer."""
+        """Load the cross-encoder re-ranker model and tokenizer."""
         try:
-            logger.info(f"Loading BGE model: {self.model_name}")
+            logger.info(f"Loading cross-encoder model: {self.model_name}")
             start_time = time.time()
             
             # Import transformers here to avoid import issues if not installed
@@ -88,12 +88,12 @@ class BGEReRanker(BaseReRanker):
             
             self.is_loaded = True
             load_time = time.time() - start_time
-            logger.info(f"Successfully loaded BGE model in {load_time:.2f}s on {self.device}")
+            logger.info(f"Successfully loaded cross-encoder model in {load_time:.2f}s on {self.device}")
             
             return True
             
         except Exception as e:
-            logger.error(f"Failed to load BGE model: {e}")
+            logger.error(f"Failed to load cross-encoder model: {e}")
             raise ModelLoadError(f"Failed to load model {self.model_name}: {e}")
     
     def _get_cache_key(self, query: str, content: str) -> str:
@@ -184,7 +184,18 @@ class BGEReRanker(BaseReRanker):
                 with torch.no_grad():
                     outputs = self.model(**inputs)
                     # Extract scores efficiently using tensor operations
-                    batch_scores = outputs.logits[:, 1].cpu().numpy()
+                    logits = outputs.logits
+                    
+                    # Handle different model output shapes for cross-encoder
+                    if logits.shape[1] == 1:
+                        # Cross-encoder single score output - use as is
+                        batch_scores = logits[:, 0].cpu().numpy()
+                    elif logits.shape[1] == 2:
+                        # Binary classification output - use positive class (for BGE compatibility)
+                        batch_scores = logits[:, 1].cpu().numpy()
+                    else:
+                        # Multi-class output - use first dimension
+                        batch_scores = logits[:, 0].cpu().numpy()
                 
                 # Batch cache update - minimize dict operations
                 if self._score_cache:

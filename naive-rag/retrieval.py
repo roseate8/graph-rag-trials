@@ -31,6 +31,8 @@ class RetrievedChunk:
     word_count: int
     section_path: str
     similarity_score: float
+    rerank_score: Optional[float] = None  # Re-ranking logit score
+    rerank_probability: Optional[float] = None  # Re-ranking probability
     
     def __str__(self) -> str:
         return f"[{self.doc_id}] {self.content[:100]}..."
@@ -147,7 +149,7 @@ class MilvusRetriever:
             re_rankers_path = Path(__file__).parent / "re-rankers"
             if str(re_rankers_path) not in sys.path:
                 sys.path.insert(0, str(re_rankers_path))
-            from bge_reranker import create_bge_reranker
+            from reranker_model import create_bge_reranker
             from config import ReRankerConfig
             
             # Create config from provided dict or use defaults
@@ -235,6 +237,13 @@ class MilvusRetriever:
                 output_fields=["chunk_id", "doc_id", "content", "word_count", "section_path"]
             )
             
+            # Check for duplicates in Milvus search results
+            milvus_ids = [result.get("chunk_id") for result in search_results if result.get("chunk_id")]
+            unique_milvus_ids = set(milvus_ids)
+            if len(milvus_ids) != len(unique_milvus_ids):
+                duplicate_count = len(milvus_ids) - len(unique_milvus_ids)
+                logger.warning(f"Milvus returned {duplicate_count} duplicate chunk IDs out of {len(milvus_ids)} results")
+            
             # Convert to RetrievedChunk objects and filter by similarity - Optimized O(k)
             retrieved_chunks = []
             for result in search_results:
@@ -261,7 +270,30 @@ class MilvusRetriever:
             if self.enable_reranking and self.reranker and retrieved_chunks:
                 retrieved_chunks = self._apply_reranking(query, retrieved_chunks, top_k)
             
-            logger.info(f"Retrieved {len(retrieved_chunks)} chunks for query")
+            # Check for duplicates and deduplicate
+            chunk_ids = [chunk.chunk_id for chunk in retrieved_chunks]
+            unique_ids = set(chunk_ids)
+            if len(chunk_ids) != len(unique_ids):
+                duplicate_count = len(chunk_ids) - len(unique_ids)
+                logger.warning(f"Found {duplicate_count} duplicate chunks in retrieval results")
+                # Log which chunks are duplicated
+                from collections import Counter
+                id_counts = Counter(chunk_ids)
+                duplicates = [chunk_id for chunk_id, count in id_counts.items() if count > 1]
+                logger.warning(f"Duplicate chunk IDs: {duplicates[:5]}...")  # Show first 5
+                
+                # Deduplicate by keeping first occurrence of each chunk_id
+                seen_ids = set()
+                deduplicated_chunks = []
+                for chunk in retrieved_chunks:
+                    if chunk.chunk_id not in seen_ids:
+                        deduplicated_chunks.append(chunk)
+                        seen_ids.add(chunk.chunk_id)
+                
+                retrieved_chunks = deduplicated_chunks
+                logger.info(f"Deduplicated to {len(retrieved_chunks)} unique chunks")
+            
+            logger.info(f"Retrieved {len(retrieved_chunks)} chunks for query ({len(set(chunk.chunk_id for chunk in retrieved_chunks))} unique)")
             return retrieved_chunks
             
         except Exception as e:
@@ -328,18 +360,32 @@ class MilvusRetriever:
             for result in rerank_results:
                 original_chunk = chunk_lookup.get(result.chunk_id)
                 if original_chunk:
-                    # Create new chunk with re-ranking score but preserve original data
+                    # Create new chunk preserving original similarity + adding re-ranking scores
+                    # Convert logit score to probability using sigmoid
+                    import math
+                    rerank_probability = 1 / (1 + math.exp(-result.rerank_score))
+                    
                     reranked_chunk = RetrievedChunk(
                         chunk_id=original_chunk.chunk_id,
                         doc_id=original_chunk.doc_id,
                         content=original_chunk.content,
                         word_count=original_chunk.word_count,
                         section_path=original_chunk.section_path,
-                        similarity_score=result.rerank_score  # Use re-ranking score
+                        similarity_score=original_chunk.similarity_score,  # Preserve original
+                        rerank_score=result.rerank_score,  # Add re-ranking logit score
+                        rerank_probability=rerank_probability  # Add re-ranking probability
                     )
                     reranked_chunks.append(reranked_chunk)
             
             rerank_time = time.time() - start_time
+            
+            # Check for duplicates in re-ranked results
+            reranked_ids = [chunk.chunk_id for chunk in reranked_chunks]
+            unique_reranked = set(reranked_ids)
+            if len(reranked_ids) != len(unique_reranked):
+                duplicate_count = len(reranked_ids) - len(unique_reranked)
+                logger.warning(f"Re-ranking introduced {duplicate_count} duplicates!")
+            
             logger.info(f"Re-ranked {len(chunks)} chunks to top {len(reranked_chunks)} in {rerank_time:.2f}s")
             
             return reranked_chunks

@@ -273,6 +273,14 @@ def health_check():
 @app.route('/api/system-stats', methods=['GET'])
 def get_system_stats():
     """Get RAG system statistics."""
+    global rag_system
+    
+    # Initialize RAG system on first use if not already initialized
+    if not rag_system:
+        logger.info("Initializing RAG system for system stats...")
+        if not init_rag_system():
+            return jsonify({"error": "Failed to initialize RAG system"}), 503
+    
     if not rag_system or not rag_system.connected:
         return jsonify({"error": "RAG system not connected"}), 503
     
@@ -320,6 +328,14 @@ def validate_api_key():
 @app.route('/api/query', methods=['POST'])
 def process_query():
     """Process a RAG query with re-ranking support."""
+    global rag_system
+    
+    # Initialize RAG system on first use
+    if not rag_system:
+        logger.info("Initializing RAG system on first query...")
+        if not init_rag_system():
+            return jsonify({"error": "Failed to initialize RAG system"}), 503
+    
     if not rag_system or not rag_system.connected:
         return jsonify({"error": "RAG system not connected"}), 503
     
@@ -379,6 +395,8 @@ def process_query():
                 "snippet": chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content,
                 "full_content": chunk.content,
                 "score": chunk.similarity_score,
+                "rerank_score": getattr(chunk, 'rerank_score', None),
+                "rerank_probability": getattr(chunk, 'rerank_probability', None),
                 "metadata": metadata,
                 "chunk_type": metadata.get('chunk_type', 'unknown')
             }
@@ -489,10 +507,8 @@ def get_conversation_details(conversation_id):
 
 
 if __name__ == '__main__':
-    # Initialize RAG system on startup
+    # Start server - RAG system will be initialized on first query
     logger.info("Starting RAG API server...")
-    
-    if not init_rag_system():
-        logger.error("Failed to initialize RAG system. Server will start but queries will fail.")
+    logger.info("RAG system will be initialized on first query to improve startup time")
     
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)

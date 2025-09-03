@@ -44,9 +44,10 @@ body {
 
 /* Main Content */
 .main-content {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
     gap: 32px;
+    align-items: start;
 }
 
 /* API Key Card */
@@ -177,6 +178,12 @@ body {
     font-family: 'Roboto Mono', monospace;
 }
 
+.topk-field {
+    width: 80px;
+    text-align: center;
+    font-family: 'Roboto Mono', monospace;
+}
+
 .model-field {
     width: 150px;
     font-family: 'Roboto Mono', monospace;
@@ -219,45 +226,182 @@ body {
     color: #525252;
 }
 
+/* Content Column */
+.content-column {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+}
+
 /* Query Section */
 .query-section {
     width: 100%;
 }
 
-.query-form {
+/* Results Section */
+.results-section {
     width: 100%;
 }
 
+.query-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Unified Search Container - Tall design with bottom controls */
+.unified-search-container {
+    display: flex;
+    flex-direction: column;
+    background-color: transparent;
+    border: 1px solid #525252;
+    border-radius: 0;
+    transition: border-color 0.2s ease;
+    min-height: 120px;
+    position: relative;
+}
+
+.unified-search-container:hover {
+    border-color: #F2F2F2;
+}
+
+.unified-search-container:focus-within {
+    border-color: #F2F2F2;
+    box-shadow: 0 0 0 1px #F2F2F2;
+}
+
+/* Main input within the unified container */
+.unified-query-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    color: #F2F2F2;
+    font-size: 16px;
+    padding: 16px 16px 16px 16px;
+    min-width: 0;
+    resize: vertical;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    font-family: inherit;
+}
+
+.unified-query-input::placeholder {
+    color: #525252;
+}
+
+/* Bottom controls bar */
+.bottom-controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: transparent;
+}
+
+/* Bottom edge dropdown - button-like */
+.bottom-edge-dropdown {
+    background-color: transparent;
+    border: 1px solid #525252;
+    border-radius: 6px;
+    color: #F2F2F2;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 12px;
+    cursor: pointer;
+    outline: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23525252' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+    min-width: 100px;
+    transition: all 0.2s ease;
+}
+
+.bottom-edge-dropdown:hover {
+    border-color: #F2F2F2;
+    background-color: #262626;
+}
+
+.bottom-edge-dropdown:focus {
+    border-color: #F2F2F2;
+    background-color: #262626;
+}
+
+/* Submit button as circular icon with white border */
+.search-submit-btn {
+    background-color: transparent;
+    border: 1px solid #F2F2F2;
+    color: #F2F2F2;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    outline: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+}
+
+.search-submit-btn:hover {
+    background-color: #F2F2F2;
+    color: #000;
+    transform: scale(1.05);
+}
+
+.search-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.submit-arrow {
+    width: 20px;
+    height: 20px;
+}
+
+/* Conversation History Link */
+.conversation-history-link {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #3A3A3A;
+}
+
+.history-link {
+    color: #F2F2F2;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    opacity: 0.8;
+}
+
+.history-link:hover {
+    color: #F2F2F2;
+    text-decoration: underline;
+    opacity: 1;
+}
+
+.history-link:focus {
+    outline: none;
+    text-decoration: underline;
+}
+
+/* Legacy input-group for backward compatibility */
 .input-group {
     display: flex;
     gap: 12px;
     align-items: center;
     flex-wrap: wrap;
-}
-
-.query-input {
-    flex: 1;
-    min-width: 300px;
-    padding: 12px 16px;
-    border: 1px solid #525252;
-    border-radius: 0;
-    font-size: 16px;
-    background-color: transparent;
-    color: #F2F2F2;
-    transition: border-color 0.2s ease;
-}
-
-.query-input:hover {
-    border-color: #F2F2F2;
-}
-
-.query-input:focus {
-    outline: none;
-    border-color: #F2F2F2;
-}
-
-.query-input::placeholder {
-    color: #525252;
 }
 
 /* Buttons */
@@ -300,13 +444,7 @@ body {
     border-color: #F2F2F2;
 }
 
-/* Results Grid */
-.results-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 32px;
-    align-items: start;
-}
+/* Legacy Results Grid - removed, now using content-column + sidebar layout */
 
 .sidebar {
     width: 100%;
@@ -316,40 +454,12 @@ body {
 }
 
 @media (max-width: 768px) {
-    .results-grid {
+    .main-content {
         grid-template-columns: 1fr;
     }
 }
 
-/* Chunk Type Selector */
-.chunk-type-select {
-    padding: 12px 16px;
-    border: 1px solid #525252;
-    border-radius: 0;
-    font-size: 14px;
-    background-color: #161616;
-    color: #F2F2F2;
-    min-width: 140px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: 'Roboto Mono', monospace;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg fill='%23525252' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    padding-right: 30px;
-}
-
-.chunk-type-select:hover {
-    border-color: #F2F2F2;
-}
-
-.chunk-type-select:focus {
-    outline: none;
-    border-color: #F2F2F2;
-}
+/* Legacy chunk type selector - now using unified search dropdown */
 
 /* Dropdown option styling */
 select option {
@@ -894,6 +1004,21 @@ details[open] summary::before {
     .input-group {
         flex-direction: column;
         align-items: stretch;
+    }
+    
+    .unified-search-container {
+        border-radius: 0;
+        min-height: 100px;
+    }
+    
+    .bottom-controls-bar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .bottom-edge-dropdown {
+        min-width: 100%;
     }
     
     .query-input {

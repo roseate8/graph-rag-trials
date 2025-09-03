@@ -1,10 +1,10 @@
 Graph-RAG Document Processing Results
 ==================================================
 
-Total chunks generated: 94
-Chunks with embeddings: 94
-Average words per chunk: 718.2
-Total tokens processed: 352,470
+Total chunks generated: 144
+Chunks with embeddings: 144
+Average words per chunk: 532.6
+Total tokens processed: 364,078
 
 Chunk ID: 10-Q4-2024-As-Filed_chunk_1
 Document: 10-Q4-2024-As-Filed
@@ -62,4 +62,4 @@ Section info: People: Apple University, Business Seasonality, Human Capital
 Content preview: This includes patents, designs, copyrights, trademarks, trade secrets and other forms of intellectual property rights in the U.S. and various foreign countries. Although the Company believes the owner...
 --------------------------------------------------
 
-... and 89 more chunks
+... and 139 more chunks
