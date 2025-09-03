@@ -62,6 +62,9 @@ class BGEReRanker(BaseReRanker):
             # Import transformers here to avoid import issues if not installed
             try:
                 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+                # Optimize CUDA performance if available
+                if self.device == "cuda" and torch.cuda.is_available():
+                    torch.backends.cudnn.benchmark = True
             except ImportError:
                 raise ModelLoadError(
                     "transformers library not found. Install with: pip install transformers torch"
@@ -82,9 +85,21 @@ class BGEReRanker(BaseReRanker):
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
             )
             
-            # Move to device
+            # Move to device and optimize
             self.model.to(self.device)
             self.model.eval()
+            
+            # Additional optimizations
+            if hasattr(self.model, 'half') and self.config.use_fp16 and self.device == "cuda":
+                self.model = self.model.half()
+            
+            # Compile model for PyTorch 2.0+ if available
+            if hasattr(torch, 'compile') and self.device != "cpu":
+                try:
+                    self.model = torch.compile(self.model, mode='reduce-overhead')
+                    logger.debug("Model compiled with torch.compile for better performance")
+                except Exception as e:
+                    logger.debug(f"Could not compile model: {e}")
             
             self.is_loaded = True
             load_time = time.time() - start_time
@@ -322,9 +337,10 @@ class BGEReRanker(BaseReRanker):
             "cache_enabled": self.config.enable_caching,
             "optimizations": {
                 "batch_processing": True,
-                "cache_optimization": True,
-                "memory_efficient": True,
-                "lazy_loading": True
+                "vectorized_normalization": True,
+                "fast_hashing": True,
+                "efficient_caching": True,
+                "memory_optimized": True
             }
         })
         return info

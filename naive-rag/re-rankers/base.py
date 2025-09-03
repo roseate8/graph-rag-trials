@@ -5,7 +5,7 @@ Base classes and data structures for re-ranking implementations.
 import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 class ReRankingError(Exception):
@@ -30,14 +30,7 @@ class ReRankResult:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format."""
-        return {
-            'chunk_id': self.chunk_id,
-            'original_rank': self.original_rank,
-            'rerank_score': self.rerank_score,
-            'final_rank': self.final_rank,
-            'content': self.content,
-            'metadata': self.metadata
-        }
+        return asdict(self)
 
 
 class BaseReRanker(ABC):

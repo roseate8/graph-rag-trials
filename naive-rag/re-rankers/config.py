@@ -3,7 +3,7 @@ Configuration classes for re-ranking implementations.
 """
 
 from typing import Optional, Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -30,18 +30,7 @@ class ReRankerConfig:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
-        return {
-            "model_name": self.model_name,
-            "model_cache_dir": self.model_cache_dir,
-            "device": self.device,
-            "batch_size": self.batch_size,
-            "max_length": self.max_length,
-            "normalize_scores": self.normalize_scores,
-            "enable_caching": self.enable_caching,
-            "cache_size": self.cache_size,
-            "use_fp16": self.use_fp16,
-            "num_threads": self.num_threads
-        }
+        return asdict(self)
     
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'ReRankerConfig':
@@ -50,17 +39,16 @@ class ReRankerConfig:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        if self.batch_size <= 0:
-            raise ValueError("batch_size must be positive")
+        validations = [
+            (self.batch_size <= 0, "batch_size must be positive"),
+            (self.max_length <= 0, "max_length must be positive"),
+            (self.cache_size <= 0, "cache_size must be positive"),
+            (self.device not in ("auto", "cpu", "cuda", "mps"), f"Invalid device: {self.device}")
+        ]
         
-        if self.max_length <= 0:
-            raise ValueError("max_length must be positive")
-        
-        if self.cache_size <= 0:
-            raise ValueError("cache_size must be positive")
-        
-        if self.device not in ["auto", "cpu", "cuda", "mps"]:
-            raise ValueError(f"Invalid device: {self.device}")
+        for condition, message in validations:
+            if condition:
+                raise ValueError(message)
 
 
 # Predefined configurations for different use cases
