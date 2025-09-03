@@ -19,33 +19,35 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Query Section -->
-            <!-- Query Section -->
-            <section class="query-section">
-                <form id="queryForm" class="query-form">
-                    <div class="input-group">
-                        <input 
-                            type="text" 
-                            id="queryInput" 
-                            placeholder="e.g., Tell me about the EPS this year"
-                            class="query-input"
-                            required
-                        >
-                        <select id="chunkTypeSelect" class="chunk-type-select" title="Choose search method">
-                            <option value="naive-rag">naive-rag</option>
-                        </select>
-                        <button type="submit" class="btn-primary" id="searchBtn">
-                            Search
-                        </button>
-                        <button type="button" class="btn-secondary" id="historyBtn">
-                            Conversation History
-                        </button>
-                    </div>
-                </form>
-            </section>
+            <!-- Left Column: Query + Results -->
+            <div class="content-column">
+                <!-- Query Section -->
+                <section class="query-section">
+                    <form id="queryForm" class="query-form">
+                        <div class="unified-search-container">
+                            <textarea 
+                                id="queryInput" 
+                                placeholder="e.g., Tell me about the EPS this year"
+                                class="unified-query-input"
+                                required
+                                rows="3"
+                            ></textarea>
+                            <div class="bottom-controls-bar">
+                                <select id="chunkTypeSelect" class="bottom-edge-dropdown" title="Choose search method">
+                                    <option value="naive-rag">naive-rag</option>
+                                </select>
+                                <button type="submit" class="search-submit-btn" id="searchBtn">
+                                    <svg class="submit-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 19V5M5 12l7-7 7 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </section>
 
-            <!-- Results Grid -->
-            <div class="results-grid">
+                <!-- Results Section -->
+                <div class="results-section">
                 <!-- Answer Card -->
                 <section class="answer-section">
                     <div class="card answer-card">
@@ -61,11 +63,18 @@
                                 <div id="logsContent" class="logs-content"></div>
                             </div>
                         </details>
+                        
+                        <!-- Conversation History Link -->
+                        <div class="conversation-history-link">
+                            <a href="#" id="historyBtn" class="history-link">Conversation History</a>
+                        </div>
                     </div>
                 </section>
+                </div>
+            </div>
 
-                <!-- Metrics & Sources -->
-                <aside class="sidebar">
+            <!-- Right Column: Sidebar -->
+            <aside class="sidebar">
                     <!-- API Key Card -->
                     <div class="card api-key-card">
                         <h3>API Settings</h3>
@@ -105,6 +114,18 @@
                                     step="0.1" 
                                     value="0.1"
                                     class="input-field temperature-field"
+                                >
+                            </div>
+                            <div class="input-group setting-row">
+                                <label for="topKInput" class="input-label">Top sources (below)</label>
+                                <input 
+                                    type="number" 
+                                    id="topKInput" 
+                                    min="1" 
+                                    max="50" 
+                                    step="1" 
+                                    value="10"
+                                    class="input-field topk-field"
                                 >
                             </div>
                             <div class="loading-indicator" id="apiKeyLoadingIndicator">

@@ -118,6 +118,7 @@ class RAGInterface {
         const searchBtn = document.getElementById('searchBtn');
         const modelSelect = document.getElementById('modelSelect');
         const temperatureInput = document.getElementById('temperatureInput');
+        const topKInput = document.getElementById('topKInput');
         
         const query = queryInput.value.trim();
         
@@ -142,7 +143,7 @@ class RAGInterface {
                 },
                 body: JSON.stringify({
                     query: query,
-                    top_k: 5,
+                    top_k: parseInt(topKInput.value),
                     model: modelSelect.value,
                     temperature: parseFloat(temperatureInput.value)
                 })
@@ -218,7 +219,15 @@ class RAGInterface {
                         }
                     </div>
                     <div class="source-scores">
-                        <span class="score">Score: ${source.score.toFixed(4)}</span>
+                        <span class="score">Similarity: ${source.score.toFixed(4)}</span>
+                        ${source.rerank_score !== null && source.rerank_score !== undefined ? 
+                            `<span class="rerank-score">Rerank: ${source.rerank_score.toFixed(4)}</span>` 
+                            : ''
+                        }
+                        ${source.rerank_probability !== null && source.rerank_probability !== undefined ? 
+                            `<span class="rerank-prob">Prob: ${(source.rerank_probability * 100).toFixed(1)}%</span>` 
+                            : ''
+                        }
                     </div>
                     ${metadataTags ? `<div class="metadata-tags">${metadataTags}</div>` : ''}
                 </div>

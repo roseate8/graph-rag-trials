@@ -11,7 +11,7 @@ class ReRankerConfig:
     """Configuration for re-ranking models."""
     
     # Model configuration
-    model_name: str = "BAAI/bge-reranker-v2-m3"
+    model_name: str = "cross-encoder/ms-marco-MiniLM-L12-v2"
     model_cache_dir: Optional[str] = None
     device: str = "auto"  # "auto", "cpu", "cuda", "mps"
     
