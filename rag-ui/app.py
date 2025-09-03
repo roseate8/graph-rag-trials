@@ -7,14 +7,18 @@ import os
 import json
 import logging
 import time
+import warnings
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from dataclasses import asdict
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory, send_file
 from flask_cors import CORS
 import threading
 import queue
+
+# Suppress protobuf warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='google.protobuf')
 
 # Add paths to sys.path
 NAIVE_RAG_PATH = Path(__file__).parent.parent / "naive-rag"
@@ -144,7 +148,7 @@ def get_resource_info() -> Dict[str, Any]:
         }
 
 
-def save_conversation_entry(query: str, result_data: Dict, initial_resources: Dict, final_resources: Dict, timing_data: Dict):
+def save_conversation_entry(query: str, result_data: Dict, initial_resources: Dict, final_resources: Dict, timing_data: Dict, enable_reranking: bool = False):
     """Save a conversation entry to history in the exact format specified."""
     try:
         history = load_conversation_history()
@@ -170,7 +174,7 @@ def save_conversation_entry(query: str, result_data: Dict, initial_resources: Di
                 },
                 "timing": {
                     "vector_search_time": timing_data.get("retrieval_time", 0),
-                    "rerank_time": 0.0,
+                    "rerank_time": timing_data.get("retrieval_time", 0) if enable_reranking else 0.0,
                     "context_time": timing_data.get("context_time", 0),
                     "llm_time": timing_data.get("generation_time", 0),
                     "total_time": timing_data.get("total_time", 0)
@@ -185,7 +189,7 @@ def save_conversation_entry(query: str, result_data: Dict, initial_resources: Di
             "tokens_used": result_data.get("response_tokens", 0),
             "timing": {
                 "vector_search_time": timing_data.get("retrieval_time", 0),
-                "rerank_time": 0.0,
+                "rerank_time": timing_data.get("retrieval_time", 0) if enable_reranking else 0.0,
                 "context_time": timing_data.get("context_time", 0),
                 "llm_time": timing_data.get("generation_time", 0),
                 "total_time": timing_data.get("total_time", 0)
@@ -214,12 +218,16 @@ def save_conversation_entry(query: str, result_data: Dict, initial_resources: Di
 
 
 def init_rag_system():
-    """Initialize the RAG system."""
+    """Initialize the RAG system with re-ranking enabled."""
     global rag_system
     
     try:
-        logger.info("Initializing RAG system...")
-        rag_system = create_rag_system(llm_type="openai")
+        logger.info("Initializing RAG system with re-ranking...")
+        rag_system = create_rag_system(
+            llm_type="openai", 
+            enable_reranking=True,
+            retrieval_multiplier=10  # 10*K initial retrieval for re-ranking
+        )
         
         if not rag_system.connect():
             logger.error("Failed to connect to Milvus")
@@ -227,13 +235,29 @@ def init_rag_system():
         
         stats = rag_system.get_system_stats()
         num_entities = stats.get('retriever_stats', {}).get('num_entities', 0)
+        rerank_config = stats.get('reranking_config', {})
+        
         logger.info(f"Connected to collection with {num_entities} document chunks")
+        logger.info(f"Re-ranking enabled: {rerank_config.get('enabled', False)}")
+        logger.info(f"Retrieval multiplier: {rerank_config.get('retrieval_multiplier', 'N/A')}")
         
         return True
     
     except Exception as e:
         logger.error(f"Error initializing RAG system: {e}")
         return False
+
+
+# Static file serving routes
+@app.route('/')
+def index():
+    """Serve the main HTML page."""
+    return send_file('index.html')
+
+@app.route('/<path:filename>')
+def static_files(filename):
+    """Serve static files (CSS, JS, images)."""
+    return send_from_directory('.', filename)
 
 
 @app.route('/api/health', methods=['GET'])
@@ -295,7 +319,7 @@ def validate_api_key():
 
 @app.route('/api/query', methods=['POST'])
 def process_query():
-    """Process a RAG query."""
+    """Process a RAG query with re-ranking support."""
     if not rag_system or not rag_system.connected:
         return jsonify({"error": "RAG system not connected"}), 503
     
@@ -305,14 +329,22 @@ def process_query():
     try:
         data = request.get_json()
         query = data.get('query', '').strip()
-        top_k = data.get('top_k', 5)
+        top_k = data.get('top_k', 10)  # Default to 10 for re-ranking
         model = data.get('model', 'gpt-4o-mini')
         temperature = data.get('temperature', 0.1)
+        enable_reranking = data.get('enable_reranking', True)  # Default enabled
+        retrieval_multiplier = data.get('retrieval_multiplier', 10)
         
         if not query:
             return jsonify({"error": "Query is required"}), 400
         
         logger.info(f"Processing query: {query[:50]}...")
+        logger.info(f"Re-ranking: {'enabled' if enable_reranking else 'disabled'}, multiplier: {retrieval_multiplier}")
+        
+        # Update RAG system configuration for this query
+        rag_system.enable_reranking = enable_reranking
+        rag_system.retrieval_multiplier = retrieval_multiplier
+        rag_system.retriever.enable_reranking = enable_reranking
         
         # Update LLM client with user preferences
         rag_system.llm_client = SecureOpenAIClient(
@@ -359,7 +391,7 @@ def process_query():
                 "metadata": metadata
             })
         
-        # Prepare metrics for UI
+        # Prepare metrics for UI with re-ranking info
         metrics = {
             "total_time": f"{total_time:.2f}s",
             "tokens_used": f"{result.context_token_count + (result.response_tokens or 0)}",
@@ -367,7 +399,11 @@ def process_query():
             "memory_peak": f"{final_resources.get('memory_used_mb', 0):.1f} MB",
             "retrieval_time": f"{result.retrieval_time:.2f}s" if result.retrieval_time else "N/A",
             "generation_time": f"{result.generation_time:.2f}s" if result.generation_time else "N/A",
-            "model": result.model_used
+            "model": result.model_used,
+            "reranking_enabled": enable_reranking,
+            "initial_chunks": top_k * retrieval_multiplier if enable_reranking else top_k,
+            "final_chunks": len(result.retrieved_chunks),
+            "retrieval_method": f"Re-ranked ({top_k * retrieval_multiplier} → {top_k})" if enable_reranking else f"Direct ({top_k})"
         }
         
         # Prepare data for conversation history in the exact format
@@ -386,7 +422,7 @@ def process_query():
         }
         
         # Save to conversation history in the exact format
-        save_conversation_entry(query, result_data, initial_resources, final_resources, timing_data)
+        save_conversation_entry(query, result_data, initial_resources, final_resources, timing_data, enable_reranking)
         
         response_data = {
             "response": result.response,

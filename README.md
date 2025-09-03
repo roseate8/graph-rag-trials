@@ -35,10 +35,13 @@
 - Reduce compute costs through intelligent caching
 
 ### 🤖 **naive-rag/** - Retrieval & Generation Engine
-**Future: Intelligent retrieval system for business-critical Q&A**
+**Production-ready RAG system with advanced re-ranking capabilities**
 
-**Planned Capabilities:**
-- Business-context aware query processing
+**Key Features:**
+- **Two-Stage Retrieval**: Initial vector search + BGE re-ranking for superior relevance
+- **Configurable Pipeline**: Adjustable retrieval multipliers and re-ranking parameters  
+- **Performance Monitoring**: Comprehensive timing and resource tracking
+- **Enterprise Integration**: REST API with web UI for business users
 - Multi-document reasoning and synthesis  
 - Confidence scoring for enterprise decision-making
 - Integration with business intelligence tools
