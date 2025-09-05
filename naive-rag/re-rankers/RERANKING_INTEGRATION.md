@@ -5,7 +5,7 @@
 The re-ranking system has been successfully integrated into the main workflow, providing enhanced document retrieval through a two-stage process:
 
 1. **Initial Retrieval**: Retrieve `10*K` chunks (default: 100 chunks when K=10)
-2. **Re-ranking**: Use BGE re-ranker v2-m3 to select the top `K` most relevant chunks (default: 10 final chunks)
+2. **Re-ranking**: Use cross-encoder re-ranker to select the top `K` most relevant chunks (default: 10 final chunks)
 
 ## Integration Points
 
@@ -14,7 +14,7 @@ The re-ranking system has been successfully integrated into the main workflow, p
 **Default Configuration:**
 - Re-ranking is **enabled by default**
 - Retrieval multiplier: **10x** (100 initial → 10 final chunks)
-- Model: `BAAI/bge-reranker-v2-m3`
+- Model: `cross-encoder/ms-marco-MiniLM-L12-v2`
 
 **API Parameters:**
 ```javascript
@@ -108,7 +108,7 @@ rag = create_rag_system(
 ## Performance Benefits
 
 ### Quality Improvements
-- **Better Relevance**: BGE re-ranker provides superior semantic matching
+- **Better Relevance**: Cross-encoder re-ranker provides superior semantic matching
 - **Larger Candidate Pool**: Initial 100-chunk retrieval captures more relevant documents
 - **Context Preservation**: Higher-quality chunks improve LLM response accuracy
 
@@ -164,7 +164,7 @@ RAG System (enable_reranking=True)
     ↓
 Vector Search (retrieve 100 chunks)
     ↓
-BGE Re-ranker (rank to top 10)
+Cross-encoder Re-ranker (rank to top 10)
     ↓
 Context Formatting
     ↓
@@ -192,7 +192,7 @@ graph TD
     C -->|Yes| E["Two-Stage Retrieval"]
     
     E --> F["Stage 1: Vector Search<br/>Retrieve 10*K chunks<br/>(Default: K=10 → 100 chunks)"]
-    F --> G["Stage 2: BGE Re-ranker<br/>BAAI/bge-reranker-v2-m3"]
+    F --> G["Stage 2: Cross-encoder Re-ranker<br/>cross-encoder/ms-marco-MiniLM-L12-v2"]
     G --> H["Return top K chunks<br/>(10 final chunks)"]
     
     D --> I["Context Formatting"]
@@ -203,7 +203,7 @@ graph TD
     subgraph "Re-ranking Components"
         L["base.py<br/>BaseReRanker Interface"]
         M["config.py<br/>ReRankerConfig"]
-        N["bge_reranker.py<br/>BGE Implementation"]
+        N["reranker_model.py<br/>Cross-encoder Implementation"]
     end
     
     subgraph "Performance Tracking"
