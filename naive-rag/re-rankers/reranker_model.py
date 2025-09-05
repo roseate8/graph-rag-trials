@@ -1,6 +1,6 @@
 """
-BGE (Beijing Academy of Artificial Intelligence) re-ranker implementation.
-Uses BAAI/bge-reranker-v2-m3 model for high-quality chunk re-ranking.
+Cross-encoder re-ranker implementation.
+Uses cross-encoder models for high-quality chunk re-ranking.
 """
 
 import torch
@@ -22,8 +22,8 @@ except ImportError:
 logger = logging.getLogger('reranker_model')
 
 
-class BGEReRanker(BaseReRanker):
-    """Cross-encoder re-ranker implementation supporting BGE and MS-MARCO models."""
+class CrossEncoderReRanker(BaseReRanker):
+    """Cross-encoder re-ranker implementation supporting various cross-encoder models."""
     
     def __init__(self, config: Optional[ReRankerConfig] = None):
         """Initialize cross-encoder re-ranker.
@@ -206,7 +206,7 @@ class BGEReRanker(BaseReRanker):
                         # Cross-encoder single score output - use as is
                         batch_scores = logits[:, 0].cpu().numpy()
                     elif logits.shape[1] == 2:
-                        # Binary classification output - use positive class (for BGE compatibility)
+                        # Binary classification output - use positive class
                         batch_scores = logits[:, 1].cpu().numpy()
                     else:
                         # Multi-class output - use first dimension
@@ -328,7 +328,7 @@ class BGEReRanker(BaseReRanker):
             raise ReRankingError(f"Re-ranking failed: {e}")
     
     def get_model_info(self) -> Dict[str, Any]:
-        """Get detailed information about the BGE model."""
+        """Get detailed information about the cross-encoder model."""
         info = super().get_model_info()
         info.update({
             "device": self.device,
@@ -352,6 +352,6 @@ class BGEReRanker(BaseReRanker):
             logger.info("Cleared re-ranking score cache")
 
 
-def create_bge_reranker(config: Optional[ReRankerConfig] = None) -> BGEReRanker:
-    """Factory function to create a BGE re-ranker."""
-    return BGEReRanker(config)
+def create_reranker(config: Optional[ReRankerConfig] = None) -> CrossEncoderReRanker:
+    """Factory function to create a cross-encoder re-ranker."""
+    return CrossEncoderReRanker(config)
