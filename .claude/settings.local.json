@@ -53,7 +53,8 @@
       "Read(C:\\Users\\NARESH PIPLAD\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\fast_graphrag\\_llm/**)",
       "Bash(pip uninstall:*)",
       "Bash(curl:*)",
-      "Bash(start http://localhost:5000)"
+      "Bash(start http://localhost:5000)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
