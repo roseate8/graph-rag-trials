@@ -149,7 +149,7 @@ class MilvusRetriever:
             re_rankers_path = Path(__file__).parent / "re-rankers"
             if str(re_rankers_path) not in sys.path:
                 sys.path.insert(0, str(re_rankers_path))
-            from reranker_model import create_bge_reranker
+            from reranker_model import create_reranker
             from config import ReRankerConfig
             
             # Create config from provided dict or use defaults
@@ -159,8 +159,8 @@ class MilvusRetriever:
                 config = ReRankerConfig()
             
             # Create the re-ranker
-            self.reranker = create_bge_reranker(config)
-            logger.info("Initialized BGE re-ranker")
+            self.reranker = create_reranker(config)
+            logger.info("Initialized CrossEncoder re-ranker")
             
         except ImportError as e:
             logger.error(f"Failed to import re-ranker: {e}")

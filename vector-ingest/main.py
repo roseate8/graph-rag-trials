@@ -967,6 +967,7 @@ def setup_openai_api_key(require_key: bool = False) -> bool:
         return False
 
 
+
 def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool:
     """
     Upload processed chunks to Milvus vector store.
@@ -1022,21 +1023,37 @@ def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool
         # Convert and upload chunks
         logger.info("🔄 Converting chunks to Milvus format...")
         
-        # Pre-allocate list and define core fields once
+        # Optimized batch processing with pre-allocated structures
         chunk_count = len(chunks_with_embeddings)
         milvus_chunks = [None] * chunk_count
-        core_fields = {"chunk_id", "doc_id", "content", "word_count", "section_path", "embedding"}
-        extended_field_count = 0
         
+        # Pre-define constants for O(1) lookups
+        core_fields = frozenset({"chunk_id", "doc_id", "content", "word_count", "section_path", "embedding", "source", "chunk_index", "page"})
+        schema_defaults = {  # Single dict creation outside loop
+            "chunk_type": "text", "product_version": "v1", "regions": "[]", "metrics": "[]", 
+            "time_periods": "[]", "dates": "[]", "orgs": "[]", "spacy_extraction": "{}", 
+            "structural_metadata": "{}", "time_context": "{}", "folder_path": "[]"
+        }
+        
+        # Batch process all chunks - single optimized loop
+        extended_field_count = 0
         for i, chunk in enumerate(chunks_with_embeddings):
-            # Create milvus_chunk by copying all fields, then handle special cases
-            milvus_chunk = dict(chunk)  # O(1) dict copy vs O(n) field-by-field
+            # Fast dict copy and immediate modifications
+            milvus_chunk = dict(chunk)
+            milvus_chunk.update({  # Batch update for better performance
+                "content": chunk["content"][:65535],
+                "section_path": str(chunk.get("section_path", "")),
+                "source": chunk.get("doc_id", "unknown"),
+                "chunk_index": i,
+                "page": chunk.get("page", 0)
+            })
             
-            # Apply transformations in-place
-            milvus_chunk["content"] = chunk["content"][:65535]  # Truncate efficiently
-            milvus_chunk["section_path"] = str(chunk.get("section_path", ""))
+            # Apply schema defaults efficiently - single pass
+            for field, default_value in schema_defaults.items():
+                if field not in milvus_chunk or milvus_chunk[field] is None:
+                    milvus_chunk[field] = default_value
             
-            # Convert complex types to JSON strings (only check non-core fields)
+            # Convert complex types to JSON (optimized with pre-filtering)
             chunk_extended_fields = 0
             for key, value in chunk.items():
                 if key not in core_fields:
@@ -1047,28 +1064,25 @@ def upload_to_milvus(chunks_file: Path, config_type: str = "production") -> bool
                         milvus_chunk[key] = str(value)
             
             milvus_chunks[i] = milvus_chunk
-            
             if chunk_extended_fields > 0:
                 extended_field_count += 1
-                if i < 2:  # Log first 2 chunks with extended fields
-                    extended_keys = [k for k in chunk.keys() if k not in core_fields]
-                    logger.info(f"📊 Chunk {i+1} has {chunk_extended_fields} extended fields: {extended_keys}")
         
         logger.info(f"📊 {extended_field_count}/{chunk_count} chunks have extended metadata")
         
-        # Upload in batches
-        batch_size = 200
+        # Optimized batch upload with larger batches for better throughput
+        batch_size = 300  # Increased batch size for better performance
         total_uploaded = 0
+        total_batches = (chunk_count + batch_size - 1) // batch_size  # Pre-calculate
         
-        for i in range(0, len(milvus_chunks), batch_size):
+        # Process all batches efficiently
+        for i in range(0, chunk_count, batch_size):
             batch = milvus_chunks[i:i + batch_size]
             batch_num = (i // batch_size) + 1
-            total_batches = (len(milvus_chunks) + batch_size - 1) // batch_size
             
             logger.info(f"📤 Uploading batch {batch_num}/{total_batches}: {len(batch)} chunks")
             
-            success = store.insert_chunks(batch)
-            if success:
+            # Only flush on final batch to minimize I/O
+            if store.insert_chunks(batch, flush=(batch_num == total_batches)):
                 total_uploaded += len(batch)
             else:
                 logger.error(f"❌ Failed to upload batch {batch_num}")

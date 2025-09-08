@@ -54,7 +54,11 @@
       "Bash(pip uninstall:*)",
       "Bash(curl:*)",
       "Bash(start http://localhost:5000)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(tasklist:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker stats:*)",
+      "Bash(docker restart:*)"
     ],
     "deny": [],
     "ask": []
