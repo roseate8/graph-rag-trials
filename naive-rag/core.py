@@ -699,7 +699,7 @@ def main():
     
     # Step 1: Initialize system components with re-ranking (default)
     print("1. Initializing RAG components with re-ranking (default enabled)...")
-    rag = create_rag_system(llm_type="openai", enable_reranking=True, retrieval_multiplier=10)
+    rag = create_rag_system(llm_type="openai", enable_reranking=True, retrieval_multiplier=50)
     
     # Step 2: Connect to Milvus
     print("2. Connecting to Milvus vector database...")
@@ -708,14 +708,26 @@ def main():
         print("Make sure Milvus is running: docker-compose up -d")
         return 1
     
-    # Step 3: Check data availability
+    # Step 3: Check data availability (with fallback test search)
     stats = rag.get_system_stats()
     num_entities = stats.get('retriever_stats', {}).get('num_entities', 0)
     print(f"3. Connected to collection with {num_entities} document chunks")
     
     if num_entities == 0:
-        print("ERROR: No documents found. Upload data first.")
-        return 1
+        print("   Entity count shows 0, trying test search to verify data availability...")
+        try:
+            # Try a test search to see if data is actually there (Milvus consistency issue)
+            test_chunks = rag.retriever.retrieve("test query", top_k=1)
+            if test_chunks:
+                print(f"   Found data via search! {len(test_chunks)} chunks available")
+                print("   (Entity count may show 0 due to Milvus consistency delay)")
+                num_entities = 1  # Set to non-zero to continue
+            else:
+                print("ERROR: No documents found via search either. Upload data first.")
+                return 1
+        except Exception as e:
+            print(f"ERROR: Could not verify data availability: {e}")
+            return 1
     
     # Step 4: Initialize LLM (this will prompt for API key)
     print("4. Initializing OpenAI LLM client...")

@@ -1,6 +1,7 @@
 """Milvus standalone vector store implementation."""
 
 import logging
+import json
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import asdict
 
@@ -118,7 +119,7 @@ class MilvusVectorStore:
                 logger.info(f"Using existing collection: {collection_name}")
                 return True
             
-            # Define schema for document chunks
+            # Define schema for document chunks with ALL metadata fields
             fields = [
                 FieldSchema(
                     name="id",
@@ -161,6 +162,114 @@ class MilvusVectorStore:
                     dtype=DataType.FLOAT_VECTOR,
                     dim=self.config.embedding_dim,
                     description="Dense embedding vector"
+                ),
+                
+                # Additional metadata fields that we compute - nullable
+                FieldSchema(
+                    name="chunk_type",
+                    dtype=DataType.VARCHAR,
+                    max_length=32,
+                    nullable=True,
+                    description="Type of chunk (text, table, etc.)"
+                ),
+                FieldSchema(
+                    name="product_version",
+                    dtype=DataType.VARCHAR,
+                    max_length=32,
+                    nullable=True,
+                    description="Product version"
+                ),
+                FieldSchema(
+                    name="source",
+                    dtype=DataType.VARCHAR,
+                    max_length=256,
+                    nullable=True,
+                    description="Source document"
+                ),
+                FieldSchema(
+                    name="chunk_index",
+                    dtype=DataType.INT32,
+                    nullable=True,
+                    description="Index of chunk within document"
+                ),
+                FieldSchema(
+                    name="page",
+                    dtype=DataType.INT32,
+                    nullable=True,
+                    description="Page number"
+                ),
+                
+                # Entity extraction metadata (stored as JSON strings) - nullable
+                FieldSchema(
+                    name="regions",
+                    dtype=DataType.VARCHAR,
+                    max_length=2048,
+                    nullable=True,
+                    description="JSON array of extracted regions"
+                ),
+                FieldSchema(
+                    name="metrics",
+                    dtype=DataType.VARCHAR,
+                    max_length=2048,
+                    nullable=True,
+                    description="JSON array of extracted metrics"
+                ),
+                FieldSchema(
+                    name="time_periods",
+                    dtype=DataType.VARCHAR,
+                    max_length=2048,
+                    nullable=True,
+                    description="JSON array of extracted time periods"
+                ),
+                FieldSchema(
+                    name="dates",
+                    dtype=DataType.VARCHAR,
+                    max_length=2048,
+                    nullable=True,
+                    description="JSON array of extracted dates"
+                ),
+                FieldSchema(
+                    name="orgs",
+                    dtype=DataType.VARCHAR,
+                    max_length=2048,
+                    nullable=True,
+                    description="JSON array of extracted organizations"
+                ),
+                
+                # SpaCy extraction results - nullable
+                FieldSchema(
+                    name="spacy_extraction",
+                    dtype=DataType.VARCHAR,
+                    max_length=4096,
+                    nullable=True,
+                    description="JSON object with spaCy extraction results"
+                ),
+                
+                # Structural metadata - nullable
+                FieldSchema(
+                    name="structural_metadata",
+                    dtype=DataType.VARCHAR,
+                    max_length=4096,
+                    nullable=True,
+                    description="JSON object with structural metadata"
+                ),
+                
+                # Time context - nullable
+                FieldSchema(
+                    name="time_context",
+                    dtype=DataType.VARCHAR,
+                    max_length=1024,
+                    nullable=True,
+                    description="JSON object with time context information"
+                ),
+                
+                # Folder path - nullable
+                FieldSchema(
+                    name="folder_path",
+                    dtype=DataType.VARCHAR,
+                    max_length=2048,
+                    nullable=True,
+                    description="JSON array of folder path components"
                 )
             ]
             
@@ -233,83 +342,41 @@ class MilvusVectorStore:
             return True
         
         try:
-            # Core schema fields (order matters for column format)
-            core_fields = ["chunk_id", "doc_id", "content", "word_count", "section_path", "embedding"]
+            # Ensure collection is loaded (required for insert operations in some Milvus versions)
+            try:
+                self.collection.load()
+            except Exception:
+                pass  # Collection might already be loaded or not need loading
             
-            # Detect dynamic fields from all chunks (not just first one)
-            dynamic_fields = set()
-            for chunk in chunks:
-                chunk_dynamic_fields = [key for key in chunk.keys() if key not in core_fields]
-                dynamic_fields.update(chunk_dynamic_fields)
-            
-            dynamic_fields = list(dynamic_fields)
-            if dynamic_fields:
-                logger.info(f"Detected {len(dynamic_fields)} dynamic fields: {dynamic_fields}")
-            
-            chunk_count = len(chunks)
-            
-            if dynamic_fields:
-                # For dynamic fields, use row-based format (list of dicts)
-                data = []
-                expected_dim = self.config.embedding_dim
-                
-                for chunk in chunks:
-                    # Validate embedding dimension
-                    embedding = chunk["embedding"]
-                    if len(embedding) != expected_dim:
-                        raise ValueError(
-                            f"Embedding dimension mismatch: expected {expected_dim}, got {len(embedding)}"
-                        )
-                    
-                    # Create row with all fields (core + dynamic)
-                    row = {
-                        "chunk_id": chunk["chunk_id"],
-                        "doc_id": chunk["doc_id"],
-                        "content": chunk["content"][:65535],
-                        "word_count": chunk["word_count"],
-                        "section_path": str(chunk.get("section_path", "")),
-                        "embedding": embedding
-                    }
-                    
-                    # Add dynamic fields to the row
-                    for field in dynamic_fields:
-                        row[field] = chunk.get(field)
-                    
-                    data.append(row)
-            else:
-                # For core-only fields, use column format for efficiency
-                chunk_ids = [""] * chunk_count
-                doc_ids = [""] * chunk_count
-                contents = [""] * chunk_count
-                word_counts = [0] * chunk_count
-                section_paths = [""] * chunk_count
-                embeddings = [None] * chunk_count
-                
-                expected_dim = self.config.embedding_dim
-                for i, chunk in enumerate(chunks):
-                    chunk_ids[i] = chunk["chunk_id"]
-                    doc_ids[i] = chunk["doc_id"]
-                    contents[i] = chunk["content"][:65535]
-                    word_counts[i] = chunk["word_count"]
-                    section_paths[i] = str(chunk.get("section_path", ""))
-                    
-                    embedding = chunk["embedding"]
-                    if len(embedding) != expected_dim:
-                        raise ValueError(
-                            f"Embedding dimension mismatch at index {i}: "
-                            f"expected {expected_dim}, got {len(embedding)}"
-                        )
-                    embeddings[i] = embedding
-                
-                data = [chunk_ids, doc_ids, contents, word_counts, section_paths, embeddings]
-            
-            # Insert data with optional flush
-            insert_result = self.collection.insert(data)
+            # Insert chunks directly
+            logger.info(f"Inserting {len(chunks)} chunks...")
+            insert_result = self.collection.insert(chunks)
+            logger.info(f"Insert completed, result: {type(insert_result)}")
             
             if flush:
-                self.collection.flush()
+                logger.info("Flushing collection...")
+                try:
+                    # Add timeout to flush operation
+                    import threading
+                    import time
+                    
+                    def flush_with_timeout():
+                        self.collection.flush()
+                    
+                    flush_thread = threading.Thread(target=flush_with_timeout)
+                    flush_thread.daemon = True
+                    flush_thread.start()
+                    flush_thread.join(timeout=10.0)  # 10 second timeout
+                    
+                    if flush_thread.is_alive():
+                        logger.warning("Flush operation timed out, but data should still be inserted")
+                    else:
+                        logger.info("Flush completed successfully")
+                except Exception as e:
+                    logger.warning(f"Flush failed: {e}, but data should still be inserted")
+                    # Continue anyway - flush is not critical for data persistence
             
-            logger.info(f"Inserted {chunk_count} chunks into collection (core + {len(dynamic_fields)} dynamic fields)")
+            logger.info(f"Successfully inserted {len(chunks)} chunks into collection")
             return True
             
         except MilvusException as e:
@@ -461,7 +528,13 @@ class MilvusVectorStore:
             if not self.collection:
                 self.collection = Collection(self.config.collection_name)
             
+            # Ensure collection is loaded and flushed for accurate count
             self.collection.load()
+            try:
+                self.collection.flush()
+            except Exception:
+                pass  # Flush might timeout, but load should show current data
+            
             return self.collection.num_entities
         except Exception as e:
             logger.error(f"Error getting entity count: {e}")

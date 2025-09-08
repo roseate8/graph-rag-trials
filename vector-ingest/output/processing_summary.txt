@@ -1,65 +1,58 @@
 Graph-RAG Document Processing Results
 ==================================================
 
-Total chunks generated: 144
-Chunks with embeddings: 144
-Average words per chunk: 532.6
-Total tokens processed: 364,078
+Total chunks generated: 214
+Chunks with embeddings: 214
+Average words per chunk: 758.9
+Total tokens processed: 1,318,828
 
-Chunk ID: 10-Q4-2024-As-Filed_chunk_1
-Document: 10-Q4-2024-As-Filed
-Word count: 699
+Chunk ID: Annual-Report-Fiscal-Year-2023_chunk_1
+Document: Annual-Report-Fiscal-Year-2023
+Word count: 1477
 Has embedding: Yes
-Section info: People: AND EXCHANGE, ANNUAL REPORT, COMMISSION Washington
-Content preview: ## UNITED STATES
+Section info: People: Annual Report
+Content preview: <!-- image -->
 
-## SECURITIES AND EXCHANGE COMMISSION Washington, D.C. 20549
+## 2023 Annual Report
 
-## FORM 10-K
+open
 
 <!-- image -->
 
-(Mark One)
-
-ANNUAL REPORT PURSUANT TO SECTION 13 OR 15(d) OF THE SECURITIES EXCHANGE ACT O...
+## +$GLYPH&lt;c=31,font=/AOPOCA+TimesNewRoman-Bold&gt;*GLYPH&lt;c=27,font=/AOPOCA+TimesNewRoman-Bold&gt;GLYPH&lt;c=26,font=/AOPOCA+TimesNew...
 --------------------------------------------------
 
-Chunk ID: 10-Q4-2024-As-Filed_chunk_2
-Document: 10-Q4-2024-As-Filed
-Word count: 740
+Chunk ID: Annual-Report-Fiscal-Year-2023_chunk_2
+Document: Annual-Report-Fiscal-Year-2023
+Word count: 46
 Has embedding: Yes
-Section info: People: Annual Report, BY REFERENCE, DOCUMENTS INCORPORATED
-Content preview: Solely for purposes of this disclosure, shares of common stock held by executive officers and directors of the Registrant as of such date have been excluded because such persons may be deemed to be af...
+Section info: None
+Content preview: GLYPH&lt;c=8,font=/AOPOEB+TimesNewRoman&gt;GLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;EDGLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;!;8HK7HOGLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;GLYPH&lt;c=24,font...
 --------------------------------------------------
 
-Chunk ID: 10-Q4-2024-As-Filed_chunk_3
-Document: 10-Q4-2024-As-Filed
-Word count: 703
+Chunk ID: Annual-Report-Fiscal-Year-2023_chunk_3
+Document: Annual-Report-Fiscal-Year-2023
+Word count: 1544
 Has embedding: Yes
-Section info: People: Accessories Wearables, Apple Watch, Mac Mac
-Content preview: Each of the terms the 'Company' and 'Apple' as used herein refers collectively to Apple Inc. and its wholly owned subsidiaries, unless otherwise stated.
-
-## PART I
-
-## Item 1. Business
-
-## Company Bac...
+Section info: None
+Content preview: GLYPH&lt;c=30,font=/AOPOEB+TimesNewRoman&gt;GLYPH&lt;c=13,font=/AOPOEB+TimesNewRoman&gt;GLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;2;GLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;7H;GLYPH&lt;c=1,font=/AO...
 --------------------------------------------------
 
-Chunk ID: 10-Q4-2024-As-Filed_chunk_4
-Document: 10-Q4-2024-As-Filed
-Word count: 707
+Chunk ID: Annual-Report-Fiscal-Year-2023_chunk_4
+Document: Annual-Report-Fiscal-Year-2023
+Word count: 585
 Has embedding: Yes
-Section info: People: Components Although, Development Because, Intellectual Property
-Content preview: The Company also employs a variety of indirect distribution channels, such as third-party cellular network carriers, wholesalers, retailers and resellers. During 2024, the Company's net sales through ...
+Section info: None
+Content preview: GLYPH&lt;c=30,font=/AOPOEB+TimesNewRoman&gt;GLYPH&lt;c=26,font=/AOPOEB+TimesNewRoman&gt;
+- R HKCEHIGLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;7D:GLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;C7HA;JGLYPH&...
 --------------------------------------------------
 
-Chunk ID: 10-Q4-2024-As-Filed_chunk_5
-Document: 10-Q4-2024-As-Filed
-Word count: 716
+Chunk ID: Annual-Report-Fiscal-Year-2023_chunk_5
+Document: Annual-Report-Fiscal-Year-2023
+Word count: 6484
 Has embedding: Yes
-Section info: People: Apple University, Business Seasonality, Human Capital
-Content preview: This includes patents, designs, copyrights, trademarks, trade secrets and other forms of intellectual property rights in the U.S. and various foreign countries. Although the Company believes the owner...
+Section info: None
+Content preview: GLYPH&lt;c=30,font=/AOPOEB+TimesNewRoman&gt;GLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;&lt;EHGLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;FKHFEI;IGLYPH&lt;c=1,font=/AOPOEB+TimesNewRoman&gt;E&lt;GLYPH&lt...
 --------------------------------------------------
 
-... and 139 more chunks
+... and 209 more chunks
