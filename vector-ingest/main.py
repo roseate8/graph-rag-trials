@@ -102,7 +102,13 @@ class DocumentProcessor:
     
     def __init__(self, input_dir: Path = None, output_dir: Path = None, use_cache: bool = True, enable_llm: bool = True):
         self.toc_detector = TableOfContentsDetector()
-        self.text_chunker = TextChunker(target_words=700, max_words=800, overlap_words=15)
+        self.text_chunker = TextChunker(
+            target_tokens=340,  # Target middle of 256-448 range
+            min_tokens=50,
+            overlap_percentage=0.20,  # 20% overlap
+            max_tokens_soft=450,
+            max_tokens_hard=512
+        )
         self.post_processor = PostProcessor()
         self.entity_extractor = EntityExtractor()
         self.embedding_service = EmbeddingService()
@@ -603,8 +609,13 @@ class DocumentProcessor:
             md_size = md_file.stat().st_size
             logger.info(f"📏 File sizes: JSON={json_size:,} bytes, MD={md_size:,} bytes")
             
-            # Initialize table processor with MD file path and LLM setting
-            self.table_processor = TableProcessor(md_file_path=md_file, generate_llm_metadata=self.enable_llm)
+            # Initialize table processor with MD file path, LLM setting, and token constraints
+            self.table_processor = TableProcessor(
+                md_file_path=md_file, 
+                generate_llm_metadata=self.enable_llm,
+                max_tokens_single_table=512,  # ≈512 tokens for single table limit
+                max_tokens_per_chunk=450      # 450 tokens per chunk when splitting
+            )
             
             # Read JSON content
             logger.debug("📖 Reading JSON content...")
