@@ -42,6 +42,7 @@ class TableBoundary:
 
 
 @dataclass
+@dataclass
 class TableExtractionResult:
     """Result of extracting table from MD using JSON boundaries."""
     table_id: str
@@ -49,6 +50,7 @@ class TableExtractionResult:
     boundary_info: TableBoundary
     extraction_method: str  # "json_guided", "md_fallback", "content_match"
     confidence: float = 1.0  # How confident we are in the extraction
+    token_count: Optional[int] = None  # Cached token count for reuse
 
 
 
@@ -214,9 +216,9 @@ class LLMTableProcessor:
         
         # OpenAI pricing (per 1M tokens)
         self.pricing = {
-            'gpt-4.1-nano': {  # Fixed model name
-                'input': 0.1 / 1_000_000,   # $0.15 per 1M input tokens
-                'output': 0.40 / 1_000_000   # $0.60 per 1M output tokens
+            'gpt-4o-mini': {  # Correct model name for cheap/fast model
+                'input': 0.15 / 1_000_000,   # $0.15 per 1M input tokens
+                'output': 0.60 / 1_000_000   # $0.60 per 1M output tokens
             }
         }
     
@@ -282,7 +284,7 @@ Classification: [category]"""
             }
             
             payload = {
-                "model": "gpt-4.1-nano",
+                "model": "gpt-4o-mini",
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 80,
                 "temperature": 0.1
@@ -307,8 +309,8 @@ Classification: [category]"""
                 
                 # Calculate cost for this call
                 call_cost = (
-                    input_tokens * self.pricing['gpt-4.1-nano']['input'] +
-                    output_tokens * self.pricing['gpt-4.1-nano']['output']
+                    input_tokens * self.pricing['gpt-4o-mini']['input'] +
+                    output_tokens * self.pricing['gpt-4o-mini']['output']
                 )
                 
                 # Extract file ID from table_id (format: table_doc_id_N)
@@ -401,14 +403,27 @@ class TableChunker(BaseProcessor):
     """Direct JSON-to-markdown table chunker with contextual metadata extraction."""
     
     def __init__(self, 
-                 max_rows_per_chunk: int = 200,
+                 max_tokens_single_table: int = 512,  # ≈512 tokens for single table
+                 max_tokens_per_chunk: int = 450,     # 450 tokens per chunk when splitting
                  preserve_headers: bool = True,
                  generate_llm_metadata: bool = True,
                  **kwargs):  # Accept md_file_path for backward compatibility but ignore it
-        """Initialize table chunker with configuration."""
-        self.max_rows_per_chunk = max_rows_per_chunk
+        """Initialize table chunker with token-based size constraints.
+        
+        Args:
+            max_tokens_single_table: Maximum tokens for entire table (≈512)
+            max_tokens_per_chunk: Maximum tokens per chunk when splitting (450)
+            preserve_headers: Always include headers in each chunk
+            generate_llm_metadata: Generate titles and summaries using LLM
+        """
+        self.max_tokens_single_table = max_tokens_single_table
+        self.max_tokens_per_chunk = max_tokens_per_chunk
         self.preserve_headers = preserve_headers
         self.generate_llm_metadata = generate_llm_metadata
+        
+        # Initialize token estimator for size calculations
+        from .text_chunker import TokenEstimator
+        self.token_estimator = TokenEstimator()
         
         self.json_detector = JSONTableDetector()
         self.llm_processor = LLMTableProcessor() if generate_llm_metadata else None
@@ -495,20 +510,18 @@ class TableChunker(BaseProcessor):
         return summary[:100] if len(summary) <= 100 else summary[:100] + '...'
     
     def _build_table_chunk_content(self, title: Optional[str], caption: Optional[str], summary: Optional[str], table_content: str) -> str:
-        """Optimized content building with minimal allocations."""
+        """Optimized content building with pre-allocated list."""
+        # Optimized with compact list building (faster than pre-allocation)
         parts = []
         
-        # Build content parts efficiently - avoid multiple append calls
         if title:
             parts.extend([title, ""])
         if caption:
             parts.extend([caption, ""])
-        if summary and summary != caption:  # Avoid duplication
+        if summary and summary != caption:
             parts.extend([summary, ""])
         
         parts.append(table_content)
-        
-        # Single join operation
         return '\n'.join(parts)
     
     def _convert_json_table_to_markdown(self, boundary: TableBoundary, json_data: Dict[str, Any]) -> str:
@@ -613,15 +626,21 @@ class TableChunker(BaseProcessor):
             confidence=1.0
         )
         
-        # Determine chunking strategy based on table size
-        table_rows = len([line for line in markdown_content.split('\n') if '|' in line])
+        # Determine chunking strategy based on token count with optimized calculation
+        table_token_count = self.token_estimator.count_tokens(markdown_content)
+        self.logger.info(f"Table {boundary.table_id}: {table_token_count} tokens")
         
-        if table_rows <= self.max_rows_per_chunk:
-            # Single chunk
+        # Store token count for reuse
+        extraction_result.token_count = table_token_count
+        
+        if table_token_count <= self.max_tokens_single_table:
+            # Single chunk - entire table fits within 512 token limit
+            self.logger.info(f"Creating single chunk for table {boundary.table_id} ({table_token_count} tokens)")
             chunk = await self._create_single_chunk(extraction_result, doc_id)
             return [chunk] if chunk else []
         else:
-            # Multiple chunks with header preservation
+            # Multiple chunks with header preservation - each chunk ≤ 450 tokens
+            self.logger.info(f"Splitting large table {boundary.table_id} ({table_token_count} tokens > {self.max_tokens_single_table})")
             return await self._create_multi_chunk_table(extraction_result, doc_id)
     
     async def _create_single_chunk(self, extraction_result: TableExtractionResult, doc_id: str) -> Optional[Chunk]:
@@ -700,8 +719,29 @@ class TableChunker(BaseProcessor):
                     data_start_idx = idx + 1
             
             data_lines = table_lines[data_start_idx:]
-            chunk_size = max(1, self.max_rows_per_chunk - len(header_lines))
-            total_chunks = (len(data_lines) + chunk_size - 1) // chunk_size
+            
+            # Optimized header processing with single string operation
+            if header_lines:
+                sep_cols = header_lines[0].count('|') - 1  # Faster than split+len
+                separator = '|' + '|'.join(['---'] * sep_cols) + '|'
+                header_content = '\n'.join(header_lines) + '\n' + separator
+            else:
+                separator = None
+                header_content = ''
+            
+            # Calculate header token cost once
+            header_tokens = self.token_estimator.count_tokens(header_content) if header_content else 0
+            available_tokens_per_chunk = self.max_tokens_per_chunk - header_tokens
+            
+            if available_tokens_per_chunk <= 0:
+                self.logger.warning(f"Headers too large ({header_tokens} tokens) for chunk size ({self.max_tokens_per_chunk}). Creating single chunk anyway.")
+                chunk = await self._create_single_chunk(extraction_result, doc_id)
+                return [chunk] if chunk else []
+            
+            self.logger.info(f"Headers use {header_tokens} tokens, {available_tokens_per_chunk} tokens available per chunk for data")
+            
+            # Batch calculate all data line tokens for efficiency
+            data_line_tokens = self.token_estimator.count_tokens_batch(data_lines)
             
             # Extract heading from original JSON caption
             extracted_heading = self._extract_table_heading_simple(boundary.caption) if boundary.caption else None
@@ -724,57 +764,106 @@ class TableChunker(BaseProcessor):
             else:
                 final_caption = None
             
-            # Pre-calculate separator for efficiency
-            separator = None
-            if header_lines:
-                sep_cols = len(header_lines[0].split('|')) - 2
-                separator = '|' + '|'.join(['---'] * sep_cols) + '|'
-            
-            # Create chunks efficiently
+            # Optimized chunk creation with pre-calculated tokens
             chunks = []
-            for chunk_idx in range(total_chunks):
-                start_idx = chunk_idx * chunk_size
-                end_idx = min(start_idx + chunk_size, len(data_lines))
-                chunk_data_lines = data_lines[start_idx:end_idx]
-                
-                # Build chunk content
-                chunk_lines = header_lines[:]
-                if separator and chunk_data_lines:
-                    chunk_lines.append(separator)
-                chunk_lines.extend(chunk_data_lines)
-                chunk_content = '\n'.join(chunk_lines)
-                
-                # Create part-specific caption for content
-                part_suffix = f" (Part {chunk_idx + 1} of {total_chunks})"
-                part_caption = f"{final_caption}{part_suffix}" if final_caption else f"Part {chunk_idx + 1} of {total_chunks}"
-                
-                # Build enhanced chunk content with title + caption + summary + table
-                enhanced_content = self._build_table_chunk_content(
-                    final_title, boundary.caption, part_caption, chunk_content
-                )
-                
-                # Use shared metadata builder (no table_caption in metadata!)
-                metadata = self._build_chunk_metadata(
-                    boundary, doc_id, table_id, len(enhanced_content.split()),
-                    final_title, classification, f"_part_{chunk_idx + 1}"  # No caption parameter
-                )
-                
-                chunks.append(Chunk(metadata=metadata, content=enhanced_content))
+            current_data_lines = []
+            current_data_tokens = 0
             
-            self.logger.info(f"Split table {table_id} into {len(chunks)} chunks")
+            # Process data lines with pre-calculated tokens (O(n) instead of O(n²))
+            for i, (line, line_tokens) in enumerate(zip(data_lines, data_line_tokens)):
+                # Check if adding this line would exceed the token limit
+                if current_data_tokens + line_tokens > available_tokens_per_chunk and current_data_lines:
+                    # Create chunk with current data lines
+                    chunk = self._create_table_chunk_optimized(
+                        header_content, current_data_lines, boundary, doc_id, 
+                        table_id, final_title, final_caption, classification, len(chunks) + 1
+                    )
+                    if chunk:
+                        chunks.append(chunk)
+                    
+                    # Start new chunk
+                    current_data_lines = [line]
+                    current_data_tokens = line_tokens
+                else:
+                    # Add line to current chunk
+                    current_data_lines.append(line)
+                    current_data_tokens += line_tokens
+            
+            # Create final chunk with remaining data
+            if current_data_lines:
+                chunk = self._create_table_chunk_optimized(
+                    header_content, current_data_lines, boundary, doc_id,
+                    table_id, final_title, final_caption, classification, len(chunks) + 1
+                )
+                if chunk:
+                    chunks.append(chunk)
+            
+            # Batch update part numbers for efficiency
+            total_chunks = len(chunks)
+            for i, chunk in enumerate(chunks):
+                part_num = i + 1
+                chunk.metadata.chunk_id = f"{doc_id}_{table_id}_part_{part_num}"
+                if chunk.metadata.section_path:
+                    chunk.metadata.section_path[0] += f" (Part {part_num} of {total_chunks})"
+            
+            self.logger.info(f"Split table {table_id} into {total_chunks} token-based chunks")
             return chunks
             
         except Exception as e:
             self.logger.error(f"Error creating multi-chunk table: {e}")
             return []
+    
+    def _create_table_chunk_optimized(self, header_content: str, data_lines: List[str], 
+                                     boundary: TableBoundary, doc_id: str, table_id: str, 
+                                     final_title: Optional[str], final_caption: Optional[str],
+                                     classification: Optional[str], part_num: int) -> Optional[Chunk]:
+        """Optimized table chunk creation with minimal allocations."""
+        try:
+            # Build chunk content efficiently with single join
+            if header_content and data_lines:
+                chunk_content = header_content + '\n' + '\n'.join(data_lines)
+            elif header_content:
+                chunk_content = header_content
+            else:
+                chunk_content = '\n'.join(data_lines)
+            
+            # Create part-specific caption once
+            part_caption = f"{final_caption} (Part {part_num})" if final_caption else f"Part {part_num}"
+            
+            # Optimized content building with pre-allocated list
+            parts = [final_title, boundary.caption, part_caption, chunk_content]
+            # Filter None values and avoid duplicates in single pass
+            content_parts = []
+            prev_part = None
+            for part in parts:
+                if part and part != prev_part:  # Skip None and duplicates
+                    content_parts.append(part)
+                    prev_part = part
+            
+            enhanced_content = '\n\n'.join(content_parts)
+            
+            # Fast word count approximation
+            word_count = enhanced_content.count(' ') + enhanced_content.count('\n') + 1
+            
+            metadata = self._build_chunk_metadata(
+                boundary, doc_id, table_id, word_count,
+                final_title, classification, f"_part_{part_num}"
+            )
+            
+            return Chunk(metadata=metadata, content=enhanced_content)
+            
+        except Exception as e:
+            self.logger.error(f"Error creating table chunk part {part_num}: {e}")
+            return None
 
 
 class TableProcessor(BaseProcessor):
     """Main table processing coordinator implementing JSON detection + MD extraction."""
     
     def __init__(self, md_file_path: Optional[Path] = None, **kwargs):
-        """Initialize table processor with MD file path for extraction."""
-        self.table_chunker = TableChunker(md_file_path=md_file_path, **kwargs)
+        """Initialize table processor with token-based size constraints."""
+        # Pass through token-based configuration
+        self.table_chunker = TableChunker(**kwargs)  # Remove md_file_path since it's not used
         self.logger = logging.getLogger(__name__ + '.TableProcessor')
     
     async def process(self, content: str, **kwargs) -> List[Chunk]:
