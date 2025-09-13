@@ -22,7 +22,11 @@ class ChunkCleaner:
                                    re.IGNORECASE | re.MULTILINE)
         
         # Glyph artifacts - single pass cleanup
-        self.glyph_regex = re.compile(r'[\uFFFD\uf0b7\uf0a7]|[\u0000-\u0008\u000B\u000C\u000E-\u001F]')
+        # Unicode glyph replacement characters
+        unicode_glyph_pattern = r'[\uFFFD\uf0b7\uf0a7]|[\u0000-\u0008\u000B\u000C\u000E-\u001F]'
+        # PDF parsing GLYPH artifacts with font specifications
+        pdf_glyph_pattern = r'GLYPH<[^>]*>'
+        self.glyph_regex = re.compile(f'{unicode_glyph_pattern}|{pdf_glyph_pattern}')
         
         # Whitespace normalization
         self.multi_space_regex = re.compile(r'[ \t]{2,}')
@@ -43,9 +47,9 @@ class ChunkCleaner:
         if not content or not content.strip():
             return ""
         
-        # Single-pass cleaning for efficiency
-        # 1. Remove glyph artifacts
-        content = self.glyph_regex.sub(' ', content)
+        # Single-pass cleaning for efficiency  
+        # 1. Remove glyph artifacts (NOTE: GLYPH artifacts are now cleaned at pipeline start)
+        content = self.glyph_regex.sub(' ', content)  # Keep as safety net
         
         # 2. Remove navigation lines (but preserve content lines)
         lines = content.split('\n')

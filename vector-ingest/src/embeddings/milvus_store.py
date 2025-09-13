@@ -154,7 +154,7 @@ class MilvusVectorStore:
                 FieldSchema(
                     name="section_path",
                     dtype=DataType.VARCHAR,
-                    max_length=1024,
+                    max_length=16384,  # Increased from 1024 to handle corrupted content
                     description="Section hierarchy path"
                 ),
                 FieldSchema(

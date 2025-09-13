@@ -734,7 +734,10 @@ class TableChunker(BaseProcessor):
             available_tokens_per_chunk = self.max_tokens_per_chunk - header_tokens
             
             if available_tokens_per_chunk <= 0:
-                self.logger.warning(f"Headers too large ({header_tokens} tokens) for chunk size ({self.max_tokens_per_chunk}). Creating single chunk anyway.")
+                # Headers are too large - this means corrupted header content (likely GLYPH artifacts)
+                # The PostProcessor should clean this up, so we shouldn't hit this case
+                self.logger.error(f"Headers too large ({header_tokens} tokens) for chunk size ({self.max_tokens_per_chunk}). This suggests corrupted header content that should be cleaned by PostProcessor.")
+                # Fall back to single chunk creation - PostProcessor will clean it later
                 chunk = await self._create_single_chunk(extraction_result, doc_id)
                 return [chunk] if chunk else []
             

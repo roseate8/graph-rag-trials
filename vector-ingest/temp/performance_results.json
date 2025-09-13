@@ -1,0 +1,882 @@
+{
+  "gliner_stats": {
+    "extractor_name": "Optimized GLiNER",
+    "total_chunks": 27,
+    "total_time": 10.72,
+    "avg_time_per_chunk": 0.397,
+    "median_time_per_chunk": 0.3606,
+    "min_time": 0.0,
+    "max_time": 1.1235,
+    "std_dev_time": 0.2511,
+    "total_entities_found": 64,
+    "avg_entities_per_chunk": 2.37,
+    "chunks_per_second": 2.52,
+    "results": [
+      {
+        "chunk_id": 0,
+        "processing_time": 1.123467206954956,
+        "entity_count": 2,
+        "result": {
+          "organizations": [],
+          "locations": [
+            "Washington, D.C.",
+            "UNITED STATES"
+          ],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 1,
+        "processing_time": 0.8319463729858398,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "Elastic N.V."
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 2,
+        "processing_time": 0.7353205680847168,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "New York Stock Exchange"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 3,
+        "processing_time": 0.4838707447052002,
+        "entity_count": 3,
+        "result": {
+          "organizations": [
+            "emerging growth company",
+            "smaller reporting company",
+            "Smaller reporting company"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 4,
+        "processing_time": 0.5106444358825684,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 5,
+        "processing_time": 0.6505928039550781,
+        "entity_count": 4,
+        "result": {
+          "organizations": [
+            "registrant",
+            "Business"
+          ],
+          "locations": [
+            "U.S."
+          ],
+          "products": [],
+          "events": [
+            "2022 annual general meeting of shareholders"
+          ]
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 6,
+        "processing_time": 0.2820897102355957,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 7,
+        "processing_time": 0.31476330757141113,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 8,
+        "processing_time": 0.2886373996734619,
+        "entity_count": 1,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [
+            "Principal Accounting Fees and Services"
+          ],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 9,
+        "processing_time": 0.38083744049072266,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Elastic N.V.",
+            "Elastic"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 10,
+        "processing_time": 0.5079855918884277,
+        "entity_count": 5,
+        "result": {
+          "organizations": [
+            "Apple Inc.",
+            "SECURITIES AND EXCHANGE COMMISSION"
+          ],
+          "locations": [
+            "California",
+            "Washington, D.C.",
+            "UNITED STATES"
+          ],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 11,
+        "processing_time": 0.5212178230285645,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "AAPL"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 12,
+        "processing_time": 0.4565162658691406,
+        "entity_count": 3,
+        "result": {
+          "organizations": [
+            "emerging growth company",
+            "smaller reporting company",
+            "smaller  reporting company"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 13,
+        "processing_time": 0.4434185028076172,
+        "entity_count": 4,
+        "result": {
+          "organizations": [
+            "emerging growth company",
+            "Emerging growth company",
+            "Registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": [
+            "restatements"
+          ]
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 14,
+        "processing_time": 0.4510965347290039,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "registrant",
+            "Registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 15,
+        "processing_time": 0.5674088001251221,
+        "entity_count": 4,
+        "result": {
+          "organizations": [
+            "Apple Inc.",
+            "Business"
+          ],
+          "locations": [
+            "U.S."
+          ],
+          "products": [],
+          "events": [
+            "annual meeting of shareholders"
+          ]
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 16,
+        "processing_time": 0.25039219856262207,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 17,
+        "processing_time": 0.3507061004638672,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 18,
+        "processing_time": 0.3018314838409424,
+        "entity_count": 1,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [
+            "Principal Accountant Fees and Services"
+          ],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 19,
+        "processing_time": 0.36055684089660645,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "Business"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 20,
+        "processing_time": 8.344650268554688e-06,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 10
+      },
+      {
+        "chunk_id": 21,
+        "processing_time": 0.20158767700195312,
+        "entity_count": 5,
+        "result": {
+          "organizations": [
+            "Apple Inc."
+          ],
+          "locations": [
+            "California",
+            "Europe"
+          ],
+          "products": [
+            "iPhone 15"
+          ],
+          "events": [
+            "product launch event"
+          ]
+        },
+        "text_length": 228
+      },
+      {
+        "chunk_id": 22,
+        "processing_time": 0.2680544853210449,
+        "entity_count": 9,
+        "result": {
+          "organizations": [
+            "Google LLC",
+            "Apple Inc.",
+            "Microsoft Corporation"
+          ],
+          "locations": [
+            "Seattle, Washington"
+          ],
+          "products": [
+            "Azure cloud services",
+            "Word",
+            "PowerPoint"
+          ],
+          "events": [
+            "quarterly business meeting",
+            "annual developer conference"
+          ]
+        },
+        "text_length": 494
+      },
+      {
+        "chunk_id": 23,
+        "processing_time": 0.2174668312072754,
+        "entity_count": 7,
+        "result": {
+          "organizations": [
+            "SpaceX"
+          ],
+          "locations": [
+            "California",
+            "Texas"
+          ],
+          "products": [
+            "Tesla Model S",
+            "Model 3",
+            "MacBook Air"
+          ],
+          "events": [
+            "test event"
+          ]
+        },
+        "text_length": 328
+      },
+      {
+        "chunk_id": 24,
+        "processing_time": 4.291534423828125e-06,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 0
+      },
+      {
+        "chunk_id": 25,
+        "processing_time": 2.86102294921875e-06,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 8
+      },
+      {
+        "chunk_id": 26,
+        "processing_time": 0.21840167045593262,
+        "entity_count": 7,
+        "result": {
+          "organizations": [
+            "Elastic N.V.",
+            "enterprise clients"
+          ],
+          "locations": [
+            "United States",
+            "Netherlands"
+          ],
+          "products": [
+            "Logstash",
+            "Elasticsearch",
+            "Kibana"
+          ],
+          "events": []
+        },
+        "text_length": 263
+      }
+    ],
+    "cache_stats": {
+      "cache_hits": 0,
+      "cache_misses": 24,
+      "hit_rate_percent": 0.0,
+      "cache_size": 0,
+      "cache_maxsize": 0,
+      "note": "Caching disabled for set compatibility"
+    }
+  },
+  "spacy_stats": {
+    "extractor_name": "spaCy",
+    "total_chunks": 27,
+    "total_time": 1.435,
+    "avg_time_per_chunk": 0.0531,
+    "median_time_per_chunk": 0.0481,
+    "min_time": 0.0,
+    "max_time": 0.1631,
+    "std_dev_time": 0.0366,
+    "total_entities_found": 58,
+    "avg_entities_per_chunk": 2.15,
+    "chunks_per_second": 18.81,
+    "results": [
+      {
+        "chunk_id": 0,
+        "processing_time": 0.1631176471710205,
+        "entity_count": 3,
+        "result": {
+          "organizations": [],
+          "locations": [
+            "D.C.",
+            "Washington"
+          ],
+          "products": [
+            "Mark One"
+          ],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 1,
+        "processing_time": 0.12955498695373535,
+        "entity_count": 3,
+        "result": {
+          "organizations": [
+            "Mountain View",
+            "State"
+          ],
+          "locations": [
+            "The Netherlands"
+          ],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 2,
+        "processing_time": 0.09383296966552734,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "New York Stock Exchange",
+            "Par Value \u20ac0.01"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 3,
+        "processing_time": 0.0616300106048584,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "Interactive Data File"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 4,
+        "processing_time": 0.05926370620727539,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 5,
+        "processing_time": 0.04504036903381348,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 6,
+        "processing_time": 0.0393223762512207,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 7,
+        "processing_time": 0.043222665786743164,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Supplementary Data",
+            "Accountants on Accounting and Financial Disclosure"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 8,
+        "processing_time": 0.044289350509643555,
+        "entity_count": 3,
+        "result": {
+          "organizations": [
+            "Beneficial Owners and Management",
+            "Principal Accounting Fees and Services"
+          ],
+          "locations": [],
+          "products": [],
+          "events": [
+            "Independence"
+          ]
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 9,
+        "processing_time": 0.0603334903717041,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Company",
+            "Elastic N.V."
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 10,
+        "processing_time": 0.08154988288879395,
+        "entity_count": 6,
+        "result": {
+          "organizations": [
+            "State",
+            "# Apple Inc."
+          ],
+          "locations": [
+            "California",
+            "D.C.",
+            "Cupertino"
+          ],
+          "products": [
+            "Mark One"
+          ],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 11,
+        "processing_time": 0.0813295841217041,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 12,
+        "processing_time": 0.07317376136779785,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Interactive Data File",
+            "Registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 13,
+        "processing_time": 0.05775308609008789,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "Registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 14,
+        "processing_time": 0.06845784187316895,
+        "entity_count": 1,
+        "result": {
+          "organizations": [
+            "Registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 15,
+        "processing_time": 0.04812812805175781,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "# Apple Inc.",
+            "Registrant"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 16,
+        "processing_time": 0.031903743743896484,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Mine Safety Disclosures"
+          ],
+          "locations": [],
+          "products": [
+            "Cybersecurity"
+          ],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 17,
+        "processing_time": 0.04878497123718262,
+        "entity_count": 3,
+        "result": {
+          "organizations": [
+            "Supplementary Data",
+            "Financial Statements",
+            "Accountants on Accounting and Financial Disclosure"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 18,
+        "processing_time": 0.04343676567077637,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Beneficial Owners and Management and Related Stockholder Matters"
+          ],
+          "locations": [],
+          "products": [],
+          "events": [
+            "Independence"
+          ]
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 19,
+        "processing_time": 0.0631570816040039,
+        "entity_count": 2,
+        "result": {
+          "organizations": [
+            "Operations",
+            "Analysis"
+          ],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 1000
+      },
+      {
+        "chunk_id": 20,
+        "processing_time": 0.007439374923706055,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 10
+      },
+      {
+        "chunk_id": 21,
+        "processing_time": 0.018339157104492188,
+        "entity_count": 3,
+        "result": {
+          "organizations": [
+            "Apple Inc."
+          ],
+          "locations": [
+            "California",
+            "Europe"
+          ],
+          "products": [],
+          "events": []
+        },
+        "text_length": 228
+      },
+      {
+        "chunk_id": 22,
+        "processing_time": 0.029529571533203125,
+        "entity_count": 6,
+        "result": {
+          "organizations": [
+            "Google LLC",
+            "Microsoft Corporation",
+            "Apple Inc."
+          ],
+          "locations": [
+            "Seattle",
+            "Washington"
+          ],
+          "products": [
+            "Azure"
+          ],
+          "events": []
+        },
+        "text_length": 494
+      },
+      {
+        "chunk_id": 23,
+        "processing_time": 0.020272493362426758,
+        "entity_count": 7,
+        "result": {
+          "organizations": [
+            "Elon Musk",
+            "SpaceX"
+          ],
+          "locations": [
+            "California",
+            "Texas"
+          ],
+          "products": [
+            "Tesla Model S",
+            "MacBook Air",
+            "Model 3"
+          ],
+          "events": []
+        },
+        "text_length": 328
+      },
+      {
+        "chunk_id": 24,
+        "processing_time": 3.0994415283203125e-06,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 0
+      },
+      {
+        "chunk_id": 25,
+        "processing_time": 6.9141387939453125e-06,
+        "entity_count": 0,
+        "result": {
+          "organizations": [],
+          "locations": [],
+          "products": [],
+          "events": []
+        },
+        "text_length": 8
+      },
+      {
+        "chunk_id": 26,
+        "processing_time": 0.02093505859375,
+        "entity_count": 5,
+        "result": {
+          "organizations": [
+            "Elastic N.V.",
+            "ESTC",
+            "NYSE"
+          ],
+          "locations": [],
+          "products": [
+            "Logstash",
+            "Elasticsearch"
+          ],
+          "events": []
+        },
+        "text_length": 263
+      }
+    ]
+  },
+  "test_timestamp": 1757745072.8545182,
+  "test_chunks_count": 27
+}

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial RAG System</title>
+    <link rel="stylesheet" href="main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>RAG trials</h1>
+            <p class="subtitle">192 documents with ~15000 embeddings based on Elasticsearch dataset. You've to generate new chunks via terminal using the chunking code files.</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Column: Query + Results -->
+            <div class="content-column">
+                <!-- Query Section -->
+                <section class="query-section">
+                    <form id="queryForm" class="query-form">
+                        <div class="unified-search-container">
+                            <textarea 
+                                id="queryInput" 
+                                placeholder="e.g., Tell me about the EPS this year"
+                                class="unified-query-input"
+                                required
+                                rows="3"
+                            ></textarea>
+                            <div class="bottom-controls-bar">
+                                <select id="chunkTypeSelect" class="bottom-edge-dropdown" title="Choose search method">
+                                    <option value="naive-rag">naive-rag</option>
+                                </select>
+                                <button type="submit" class="search-submit-btn" id="searchBtn">
+                                    <svg class="submit-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 19V5M5 12l7-7 7 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Results Section -->
+                <div class="results-section">
+                <!-- Answer Card -->
+                <section class="answer-section">
+                    <div class="card answer-card">
+                        <h2>Answer</h2>
+                        <div id="answerContent" class="answer-content">
+                            <div class="empty-state">Submit a query to get started</div>
+                        </div>
+                        
+                        <!-- Logs Section -->
+                        <details class="thinking-section" id="thinkingSection">
+                            <summary>Logs</summary>
+                            <div class="logs-container">
+                                <div id="logsContent" class="logs-content"></div>
+                            </div>
+                        </details>
+                        
+                        <!-- Conversation History Link -->
+                        <div class="conversation-history-link">
+                            <a href="#" id="historyBtn" class="history-link">Conversation History</a>
+                        </div>
+                    </div>
+                </section>
+                </div>
+            </div>
+
+            <!-- Right Column: Sidebar -->
+            <aside class="sidebar">
+                    <!-- API Key Card -->
+                    <div class="card api-key-card">
+                        <h3>API Settings</h3>
+                        <form id="apiKeyForm" class="api-key-form">
+                            <div class="input-group api-key-input-group">
+                                <div class="api-key-container">
+                                    <input 
+                                        type="password" 
+                                        id="apiKeyInput" 
+                                        placeholder="Enter your API key"
+                                        class="input-field api-key-field"
+                                        required
+                                    >
+                                    <button type="button" class="btn-icon" id="toggleApiKeyBtn">
+                                        <span class="eye-icon hidden"></span>
+                                    </button>
+                                    <button type="submit" class="btn-icon" id="saveApiKeyBtn">
+                                        <span class="submit-icon"></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-group setting-row">
+                                <label for="modelSelect" class="input-label">Model</label>
+                                <select id="modelSelect" class="input-field model-field">
+                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                    <option value="gpt-4o">GPT-4o</option>
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                </select>
+                            </div>
+                            <div class="input-group setting-row">
+                                <label for="temperatureInput" class="input-label">Temperature</label>
+                                <input 
+                                    type="number" 
+                                    id="temperatureInput" 
+                                    min="0" 
+                                    max="1" 
+                                    step="0.1" 
+                                    value="0.1"
+                                    class="input-field temperature-field"
+                                >
+                            </div>
+                            <div class="input-group setting-row">
+                                <label for="topKInput" class="input-label">Top sources (below)</label>
+                                <input 
+                                    type="number" 
+                                    id="topKInput" 
+                                    min="1" 
+                                    max="50" 
+                                    step="1" 
+                                    value="10"
+                                    class="input-field topk-field"
+                                >
+                            </div>
+                            <div class="loading-indicator" id="apiKeyLoadingIndicator">
+                                Validating API key...
+                            </div>
+                        </form>
+                    </div>
+
+                <!-- Metrics Card -->
+                    <div class="card metrics-card">
+                        <h3>Metrics</h3>
+                        <div id="metricsContent" class="metrics-content">
+                            <div class="metric-row">
+                                <span class="metric-label">Total time:</span>
+                                <span class="metric-value" id="totalTime">--</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Tokens:</span>
+                                <span class="metric-value" id="tokensUsed">--</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">CPU (peak):</span>
+                                <span class="metric-value" id="cpuPeak">--</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Memory (peak):</span>
+                                <span class="metric-value" id="memoryPeak">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sources Card -->
+                    <div class="card sources-card">
+                        <h3>Top Sources</h3>
+                        <div id="sourcesContent" class="sources-content">
+                            <div class="empty-state">No sources available</div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Conversation History Panel -->
+            <aside class="history-panel" id="historyPanel">
+                <div class="history-content">
+                    <div class="history-header">
+                        <h2>Conversation History</h2>
+                        <button class="close-btn" id="closeHistoryBtn">×</button>
+                    </div>
+                    <div class="history-body">
+                        <div class="history-list">
+                            <div id="chatsList" class="chats-list">
+                                <div class="empty-state">No saved chats</div>
+                            </div>
+                        </div>
+                        <div class="history-details">
+                            <div id="chatDetails" class="chat-details">
+                                <div class="empty-state">Select a chat to view details</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

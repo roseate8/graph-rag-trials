@@ -23,7 +23,7 @@ from src.chunking.processors.toc_detector import TableOfContentsDetector
 from src.chunking.processors.text_chunker import TextChunker
 from src.chunking.processors import PostProcessor, ChunkCleaner, TableProcessor
 from src.chunking.processors.entity_extractor import EntityExtractor
-from src.chunking.metadata_enrichment.spacy_extractor import create_spacy_extractor
+from src.chunking.metadata_enrichment import create_gliner_extractor
 from src.chunking.processors.llm_utils import get_openai_api_key, has_openai_api_key, clear_openai_api_key, set_openai_api_key
 from src.embeddings import EmbeddingService, clear_milvus_collection, drop_milvus_collection, MilvusVectorStore, get_config
 
@@ -121,13 +121,13 @@ class DocumentProcessor:
         if use_cache:
             self.cache_dir.mkdir(exist_ok=True)
             
-        # Initialize spaCy extractor with error handling
+        # Initialize GLiNER extractor with error handling
         try:
-            self.spacy_extractor = create_spacy_extractor()
-            logger.info("✅ spaCy extractor initialized")
+            self.gliner_extractor = create_gliner_extractor()
+            logger.info("✅ GLiNER extractor initialized")
         except Exception as e:
-            logger.warning(f"⚠️ spaCy unavailable: {e}")
-            self.spacy_extractor = None
+            logger.warning(f"⚠️ GLiNER unavailable: {e}")
+            self.gliner_extractor = None
         
         # Initialize table processor (will be configured per document)
         self.table_processor = None
@@ -453,10 +453,10 @@ class DocumentProcessor:
         logger.info("🏷️  Extracting entities...")
         chunks_with_entities = self._extract_entities(all_chunks, folder_path)
         
-        # 7.1. Add spaCy entity extraction
-        if self.spacy_extractor:
-            logger.info("🧠 Adding spaCy entity extraction...")
-            chunks_with_entities = self._add_spacy_extraction(chunks_with_entities)
+        # 7.1. Add GLiNER entity extraction
+        if self.gliner_extractor:
+            logger.info("🧠 Adding GLiNER entity extraction...")
+            chunks_with_entities = self._add_gliner_extraction(chunks_with_entities)
         
         # 8. Enrich with structural metadata (Phase 1)
         logger.info("🏗️  Enriching with structural metadata...")
@@ -838,17 +838,17 @@ class DocumentProcessor:
         
         return []
     
-    def _add_spacy_extraction(self, chunks: List[Chunk]) -> List[Chunk]:
-        """Optimized spaCy entity extraction with efficient batch processing."""
-        if not chunks or not self.spacy_extractor:
+    def _add_gliner_extraction(self, chunks: List[Chunk]) -> List[Chunk]:
+        """Optimized GLiNER entity extraction with efficient batch processing."""
+        if not chunks or not self.gliner_extractor:
             return chunks
         
         start_time = time.time()
         chunk_count = len(chunks)
         
         # Pre-allocate results dictionary for O(1) access
-        if not hasattr(self, '_spacy_results'):
-            self._spacy_results = {}
+        if not hasattr(self, '_gliner_results'):
+            self._gliner_results = {}
         
         # Pre-allocate empty result for reuse
         empty_result = {"organizations": [], "locations": [], "products": [], "events": []}
@@ -861,24 +861,24 @@ class DocumentProcessor:
             
             # Skip very short chunks (< 50 chars) for efficiency
             if len(content) < 50:
-                self._spacy_results[chunk_id] = empty_result.copy()
+                self._gliner_results[chunk_id] = empty_result.copy()
                 continue
             
             try:
-                # Extract 4 clean entity types using optimized spaCy
-                spacy_result = self.spacy_extractor.process_chunk_content(content)
-                self._spacy_results[chunk_id] = spacy_result
+                # Extract 4 clean entity types using optimized GLiNER
+                gliner_result = self.gliner_extractor.process_chunk_content(content)
+                self._gliner_results[chunk_id] = gliner_result
                 
                 # Fast entity counting using generator expression
-                total_entities += sum(len(entities) for entities in spacy_result.values())
+                total_entities += sum(len(entities) for entities in gliner_result.values())
                 
             except Exception as e:
-                logger.warning(f"spaCy extraction failed for {chunk_id}: {e}")
-                self._spacy_results[chunk_id] = empty_result.copy()
+                logger.warning(f"GLiNER extraction failed for {chunk_id}: {e}")
+                self._gliner_results[chunk_id] = empty_result.copy()
         
         processing_time = time.time() - start_time
         
-        logger.info(f"🧠 spaCy extraction: {total_entities} entities from {chunk_count} chunks in {processing_time:.2f}s")
+        logger.info(f"🧠 GLiNER extraction: {total_entities} entities from {chunk_count} chunks in {processing_time:.2f}s")
         logger.info(f"⚡ Performance: {processing_time/chunk_count*1000:.1f}ms per chunk")
         
         return chunks
