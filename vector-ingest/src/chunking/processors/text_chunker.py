@@ -221,20 +221,30 @@ class TextChunker(BaseProcessor):
         # Batch count tokens for all final contents
         token_counts = self.token_estimator.count_tokens_batch(final_contents)
         
-        # Build result chunks
+        # Build result chunks with post-heading validation
         processed_chunks = []
-        for i, (final_content, token_count, chunk_headings) in enumerate(
-            zip(final_contents, token_counts, chunk_headings_list)
-        ):
-            processed_chunks.append({
-                'chunk_id': f"{doc_id}_chunk_{i+1}",
-                'content': final_content,
-                'token_count': token_count,
-                'word_count': len(final_content.split()),
-                'doc_id': doc_id,
-                'section_path': [h['text'] for h in chunk_headings],
-                'heading_context': chunk_headings
-            })
+        chunk_counter = 1
+        
+        for final_content, token_count, chunk_headings in zip(final_contents, token_counts, chunk_headings_list):
+            if token_count <= self.max_tokens_hard:
+                # Chunk is within limits
+                processed_chunks.append({
+                    'chunk_id': f"{doc_id}_chunk_{chunk_counter}",
+                    'content': final_content,
+                    'token_count': token_count,
+                    'word_count': len(final_content.split()),
+                    'doc_id': doc_id,
+                    'section_path': [h['text'] for h in chunk_headings],
+                    'heading_context': chunk_headings
+                })
+                chunk_counter += 1
+            else:
+                # Chunk exceeded limit after heading prepending - split it
+                split_chunks = self._split_oversized_chunk_with_headings(
+                    final_content, chunk_headings, doc_id, chunk_counter
+                )
+                processed_chunks.extend(split_chunks)
+                chunk_counter += len(split_chunks)
         
         return processed_chunks
     
@@ -287,7 +297,13 @@ class TextChunker(BaseProcessor):
         total_tokens = sum(sentence_token_counts)
         
         if total_tokens < self.min_tokens:
-            return [' '.join(content_sentences)]
+            # Even if total is small, respect max_tokens limit
+            full_content = ' '.join(content_sentences)
+            if total_tokens <= self.max_tokens_hard:
+                return [full_content]
+            else:
+                # Split oversized small content (corrupted data case)
+                return self._force_split_oversized_content(full_content)
         
         chunks = []
         current_chunk = []
@@ -330,9 +346,15 @@ class TextChunker(BaseProcessor):
                 current_chunk = overlap_sentences
                 current_token_count = overlap_tokens
         
-        # Add remaining content
+        # Add remaining content with proper validation
         if current_chunk and current_token_count >= self.min_tokens:
-            chunks.append(' '.join(current_chunk))
+            if current_token_count <= self.max_tokens_hard:
+                chunks.append(' '.join(current_chunk))
+            else:
+                # Split oversized final chunk
+                oversized_content = ' '.join(current_chunk)
+                split_chunks = self._force_split_oversized_content(oversized_content)
+                chunks.extend(split_chunks)
         
         return chunks
     
@@ -545,7 +567,17 @@ class TextChunker(BaseProcessor):
         
         # Early return for single small element
         if len(elements) == 1 and element_token_counts[0] < self.min_tokens:
-            return [elements]
+            # Even if small, respect max_tokens limit
+            if element_token_counts[0] <= self.max_tokens_hard:
+                return [elements]
+            else:
+                # Split oversized single element
+                element_text = element_texts[0]
+                split_texts = self._force_split_oversized_content(element_text)
+                split_elements = []
+                for text in split_texts:
+                    split_elements.append([{'text': text, 'type': elements[0].get('type', 'text')}])
+                return split_elements
         
         # Pre-analyze content complexity for the entire set
         full_text = '\n'.join(element_texts)
@@ -572,9 +604,18 @@ class TextChunker(BaseProcessor):
                 current_chunk = []
                 current_token_count = 0
         
-        # Add remaining elements
+        # Add remaining elements with proper validation
         if current_chunk and current_token_count >= self.min_tokens:
-            chunks.append(current_chunk)
+            if current_token_count <= self.max_tokens_hard:
+                chunks.append(current_chunk)
+            else:
+                # Split oversized final chunk
+                chunk_text = self._elements_to_text(current_chunk)
+                split_texts = self._force_split_oversized_content(chunk_text)
+                for text in split_texts:
+                    if text.strip():
+                        split_chunk = [{'text': text, 'type': 'text'}]
+                        chunks.append(split_chunk)
         
         return chunks
     
@@ -591,6 +632,141 @@ class TextChunker(BaseProcessor):
                 texts.append(text)
         
         return '\n\n'.join(texts)
+    
+    def _force_split_oversized_content(self, content: str) -> List[str]:
+        """Force split oversized content that bypassed normal chunking (e.g., corrupted data)."""
+        if not content:
+            return []
+        
+        current_tokens = self.token_estimator.count_tokens(content)
+        if current_tokens <= self.max_tokens_hard:
+            return [content]
+        
+        # Force split by character count as fallback for corrupted content
+        # Estimate chars per token (roughly 4:1 ratio)
+        chars_per_token = len(content) / current_tokens if current_tokens > 0 else 4
+        max_chars_per_chunk = int(self.max_tokens_hard * chars_per_token * 0.9)  # 90% safety margin
+        
+        chunks = []
+        start = 0
+        while start < len(content):
+            end = min(start + max_chars_per_chunk, len(content))
+            
+            # Try to find sentence boundary near the end
+            if end < len(content):
+                sentence_end = content.rfind('.', start, end + 100)
+                if sentence_end > start:
+                    end = sentence_end + 1
+            
+            chunk = content[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+            start = end
+        
+        return chunks
+    
+    def _split_oversized_chunk_with_headings(self, final_content: str, chunk_headings: List[Dict[str, Any]], 
+                                           doc_id: str, chunk_counter: int) -> List[Dict[str, Any]]:
+        """Split chunks that exceed token limits after heading prepending."""
+        # Separate heading prefix from actual content
+        heading_prefix = ""
+        actual_content = final_content
+        
+        if chunk_headings:
+            # Rebuild heading prefix
+            heading_lines = []
+            for heading in chunk_headings:
+                level_marker = '#' * heading['level']
+                heading_line = f"{level_marker} {heading['text']} [H{heading['level']}]"
+                heading_lines.append(heading_line)
+            
+            if heading_lines:
+                heading_prefix = '\n\n'.join(heading_lines) + '\n\n'
+                actual_content = final_content[len(heading_prefix):]
+        
+        # Calculate heading token overhead
+        heading_tokens = self.token_estimator.count_tokens(heading_prefix)
+        available_tokens_per_chunk = self.max_tokens_hard - heading_tokens
+        
+        # If headings alone exceed limit, truncate headings
+        if available_tokens_per_chunk < self.min_tokens:
+            # Truncate corrupted headings
+            truncated_headings = self._truncate_corrupted_headings(chunk_headings)
+            if truncated_headings:
+                heading_lines = []
+                for heading in truncated_headings:
+                    level_marker = '#' * heading['level']
+                    heading_line = f"{level_marker} {heading['text']} [H{heading['level']}]"
+                    heading_lines.append(heading_line)
+                heading_prefix = '\n\n'.join(heading_lines) + '\n\n'
+                heading_tokens = self.token_estimator.count_tokens(heading_prefix)
+                available_tokens_per_chunk = self.max_tokens_hard - heading_tokens
+            else:
+                # No headings if all are corrupted
+                heading_prefix = ""
+                heading_tokens = 0
+                available_tokens_per_chunk = self.max_tokens_hard
+                chunk_headings = []
+        
+        # Split content to fit available token budget
+        content_chunks = self._force_split_oversized_content(actual_content)
+        
+        result_chunks = []
+        for i, content_chunk in enumerate(content_chunks):
+            # Check if this chunk fits with headings
+            full_chunk = heading_prefix + content_chunk if heading_prefix else content_chunk
+            chunk_tokens = self.token_estimator.count_tokens(full_chunk)
+            
+            if chunk_tokens <= self.max_tokens_hard:
+                result_chunks.append({
+                    'chunk_id': f"{doc_id}_chunk_{chunk_counter + i}",
+                    'content': full_chunk,
+                    'token_count': chunk_tokens,
+                    'word_count': len(full_chunk.split()),
+                    'doc_id': doc_id,
+                    'section_path': [h['text'] for h in chunk_headings],
+                    'heading_context': chunk_headings
+                })
+            else:
+                # Even individual split is too big - use content only
+                result_chunks.append({
+                    'chunk_id': f"{doc_id}_chunk_{chunk_counter + i}",
+                    'content': content_chunk,
+                    'token_count': self.token_estimator.count_tokens(content_chunk),
+                    'word_count': len(content_chunk.split()),
+                    'doc_id': doc_id,
+                    'section_path': ["[TRUNCATED_HEADING]"],
+                    'heading_context': []
+                })
+        
+        return result_chunks
+    
+    def _truncate_corrupted_headings(self, chunk_headings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Truncate or remove corrupted GLYPH headings."""
+        if not chunk_headings:
+            return []
+        
+        truncated_headings = []
+        for heading in chunk_headings:
+            heading_text = heading.get('text', '')
+            
+            # Check if heading is corrupted (contains GLYPH content)
+            if 'GLYPH' in heading_text:
+                # Truncate to first 50 characters and add ellipsis
+                if len(heading_text) > 50:
+                    truncated_text = heading_text[:50] + "..."
+                    truncated_headings.append({
+                        **heading,
+                        'text': truncated_text
+                    })
+                # Skip very short corrupted headings
+                elif len(heading_text) > 10:
+                    truncated_headings.append(heading)
+            else:
+                # Keep normal headings
+                truncated_headings.append(heading)
+        
+        return truncated_headings
     
     def _enhance_with_json_data(self, chunks: List[Dict[str, Any]], json_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Enhance MD-based chunks with JSON structure data."""

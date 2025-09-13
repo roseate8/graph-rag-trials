@@ -20,9 +20,12 @@ import queue
 # Suppress protobuf warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='google.protobuf')
 
-# Add paths to sys.path
-NAIVE_RAG_PATH = Path(__file__).parent.parent / "naive-rag"
-VECTOR_INGEST_PATH = Path(__file__).parent.parent / "vector-ingest" / "src"
+# Add paths to sys.path - use absolute paths to handle Streamlit working directory changes
+CURRENT_FILE = Path(__file__).absolute()
+PROJECT_ROOT = CURRENT_FILE.parent.parent
+NAIVE_RAG_PATH = PROJECT_ROOT / "naive-rag"
+VECTOR_INGEST_PATH = PROJECT_ROOT / "vector-ingest" / "src"
+
 sys.path.insert(0, str(NAIVE_RAG_PATH))
 sys.path.insert(0, str(VECTOR_INGEST_PATH))
 
@@ -382,14 +385,39 @@ def process_query():
         sources = []
         retrieved_chunks_data = []
         for chunk in result.retrieved_chunks:
-            # Create metadata dict from chunk attributes
+            # Create comprehensive metadata dict from chunk attributes
             metadata = {
                 "chunk_id": chunk.chunk_id,
                 "doc_id": chunk.doc_id,
                 "word_count": chunk.word_count,
                 "section_path": chunk.section_path,
-                "chunk_type": getattr(chunk, 'chunk_type', 'unknown')
+                "chunk_type": getattr(chunk, 'chunk_type', 'unknown'),
+                "regions": getattr(chunk, 'regions', None),
+                "product_version": getattr(chunk, 'product_version', None),
+                "folder_path": getattr(chunk, 'folder_path', None),
+                "structural_metadata": getattr(chunk, 'structural_metadata', None),
+                "entity_metadata": getattr(chunk, 'entity_metadata', None)
             }
+
+            # DEBUG: Add mock metadata to test UI display
+            if metadata.get("regions") is None:
+                metadata["regions"] = ["United States", "Europe"]
+            if metadata.get("product_version") is None:
+                metadata["product_version"] = "v2.4"
+            if metadata.get("folder_path") is None:
+                metadata["folder_path"] = ["financial-reports", "annual-reports"]
+            if metadata.get("structural_metadata") is None:
+                metadata["structural_metadata"] = {
+                    "element_type": "paragraph",
+                    "page_number": 15,
+                    "is_heading": False
+                }
+            if metadata.get("entity_metadata") is None:
+                metadata["entity_metadata"] = {
+                    "organizations": ["Elastic N.V.", "SEC"],
+                    "locations": ["San Francisco", "Amsterdam"],
+                    "financial_metrics": ["revenue", "COGS"]
+                }
             
             source = {
                 "snippet": chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content,

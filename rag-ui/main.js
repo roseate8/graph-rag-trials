@@ -199,15 +199,70 @@ class RAGInterface {
 
         sourcesContent.innerHTML = sources.map((source, index) => {
             const metadata = source.metadata || {};
+            
+            // Helper function to format metadata values
+            const formatMetadataValue = (key, value) => {
+                if (!value) return null;
+                
+                if (Array.isArray(value)) {
+                    return value.length > 0 ? value.join(', ') : null;
+                } else if (typeof value === 'object') {
+                    // For structural_metadata and entity_metadata, show key properties
+                    if (key === 'structural_metadata') {
+                        const props = [];
+                        if (value.element_type) props.push(`type: ${value.element_type}`);
+                        if (value.page_number) props.push(`page: ${value.page_number}`);
+                        if (value.is_heading) props.push('heading');
+                        return props.length > 0 ? props.join(', ') : null;
+                    } else if (key === 'entity_metadata') {
+                        const props = [];
+                        if (value.organizations?.length) props.push(`orgs: ${value.organizations.join(', ')}`);
+                        if (value.locations?.length) props.push(`locations: ${value.locations.join(', ')}`);
+                        if (value.products?.length) props.push(`products: ${value.products.join(', ')}`);
+                        if (value.events?.length) props.push(`events: ${value.events.join(', ')}`);
+                        return props.length > 0 ? props.join(' | ') : null;
+                    }
+                    return JSON.stringify(value);
+                }
+                return String(value);
+            };
+            
+            // DEBUG: Log all metadata to see what's actually available
+            console.log('Chunk metadata:', metadata);
+
+            // Create metadata tags for all available metadata
             const metadataTags = Object.entries(metadata)
-                .filter(([key, value]) => key !== 'chunk_type' && value)
-                .map(([key, value]) => `<span class="metadata-tag">${key}: ${value}</span>`)
+                .filter(([key, value]) => key !== 'chunk_type' && value !== null && value !== undefined && value !== '')
+                .map(([key, value]) => {
+                    const formattedValue = formatMetadataValue(key, value);
+                    if (!formattedValue) return null;
+                    
+                    // Use friendly names for display
+                    const friendlyNames = {
+                        'chunk_id': 'ID',
+                        'doc_id': 'Document',
+                        'word_count': 'Words',
+                        'section_path': 'Section',
+                        'regions': 'Regions',
+                        'product_version': 'Version',
+                        'folder_path': 'Path',
+                        'structural_metadata': 'Structure',
+                        'entity_metadata': 'Entities'
+                    };
+                    
+                    const displayName = friendlyNames[key] || key;
+                    return `<span class="metadata-tag" title="${key}: ${formattedValue}">
+                        <span class="metadata-key">${displayName}:</span> 
+                        <span class="metadata-value">${formattedValue}</span>
+                    </span>`;
+                })
+                .filter(tag => tag !== null)
                 .join('');
 
             return `
                 <div class="source-chunk">
                     <div class="source-header">
-                        <span class="chunk-type">${source.chunk_type}</span>
+                        <span class="chunk-type">${source.chunk_type || 'unknown'}</span>
                     </div>
                     <div class="source-content-wrapper">
                         <div class="source-snippet" id="snippet-${index}">
@@ -221,11 +276,11 @@ class RAGInterface {
                     <div class="source-scores">
                         <span class="score">Similarity: ${source.score.toFixed(4)}</span>
                         ${source.rerank_score !== null && source.rerank_score !== undefined ? 
-                            `<span class="rerank-score">Rerank: ${source.rerank_score.toFixed(4)}</span>` 
+                            `<span class="score rerank-score">Rerank: ${source.rerank_score.toFixed(4)}</span>` 
                             : ''
                         }
                         ${source.rerank_probability !== null && source.rerank_probability !== undefined ? 
-                            `<span class="rerank-prob">Prob: ${(source.rerank_probability * 100).toFixed(1)}%</span>` 
+                            `<span class="score rerank-prob">Prob: ${(source.rerank_probability * 100).toFixed(1)}%</span>` 
                             : ''
                         }
                     </div>

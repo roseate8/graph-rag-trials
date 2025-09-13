@@ -33,6 +33,13 @@ class RetrievedChunk:
     similarity_score: float
     rerank_score: Optional[float] = None  # Re-ranking logit score
     rerank_probability: Optional[float] = None  # Re-ranking probability
+    # Additional metadata fields
+    chunk_type: Optional[str] = None
+    regions: Optional[List[str]] = None
+    product_version: Optional[str] = None
+    folder_path: Optional[List[str]] = None
+    structural_metadata: Optional[Dict[str, Any]] = None
+    entity_metadata: Optional[Dict[str, Any]] = None
     
     def __str__(self) -> str:
         return f"[{self.doc_id}] {self.content[:100]}..."
@@ -230,11 +237,15 @@ class MilvusRetriever:
             logger.debug(f"Generating embedding for query: {query[:50]}...")
             query_embedding = self._get_query_embedding(query)
             
-            # Search Milvus for similar chunks
+            # Search Milvus for similar chunks with all metadata fields
             search_results = self.milvus_store.search_similar(
                 query_embedding=query_embedding,
                 top_k=initial_top_k,
-                output_fields=["chunk_id", "doc_id", "content", "word_count", "section_path"]
+                output_fields=[
+                    "chunk_id", "doc_id", "content", "word_count", "section_path",
+                    "chunk_type", "regions", "product_version", "folder_path", 
+                    "structural_metadata", "entity_metadata"
+                ]
             )
             
             # Check for duplicates in Milvus search results
@@ -258,7 +269,14 @@ class MilvusRetriever:
                             content=result.get("content") or "",
                             word_count=result.get("word_count") or 0,
                             section_path=result.get("section_path") or "",
-                            similarity_score=similarity_score
+                            similarity_score=similarity_score,
+                            # Additional metadata fields
+                            chunk_type=result.get("chunk_type"),
+                            regions=result.get("regions"),
+                            product_version=result.get("product_version"),
+                            folder_path=result.get("folder_path"),
+                            structural_metadata=result.get("structural_metadata"),
+                            entity_metadata=result.get("entity_metadata")
                         )
                         retrieved_chunks.append(chunk)
                     except (KeyError, TypeError):

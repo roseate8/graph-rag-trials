@@ -306,7 +306,7 @@ body {
 .bottom-edge-dropdown {
     background-color: transparent;
     border: 1px solid #525252;
-    border-radius: 6px;
+    border-radius: 0px;
     color: #F2F2F2;
     font-size: 14px;
     font-weight: 500;
@@ -678,6 +678,18 @@ details[open] summary::before {
     font-size: 11px;
     font-weight: 400;
     font-family: 'Roboto Mono', monospace;
+    display: inline-block;
+    margin: 2px 0;
+}
+
+.metadata-key {
+    color: #757575;
+    font-weight: 500;
+}
+
+.metadata-value {
+    color: #F2F2F2;
+    font-weight: 400;
 }
 
 /* See More Button */

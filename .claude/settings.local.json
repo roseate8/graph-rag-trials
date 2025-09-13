@@ -58,7 +58,11 @@
       "Bash(tasklist:*)",
       "Bash(docker logs:*)",
       "Bash(docker stats:*)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Read(//e/**)",
+      "Bash(PYTHONPATH=\"../naive-rag:../vector-ingest/src:$PYTHONPATH\" python -m streamlit run app.py)",
+      "Bash(start http://localhost:8501)",
+      "Bash(PYTHONPATH=\"../naive-rag:../vector-ingest/src:$PYTHONPATH\" python app.py)"
     ],
     "deny": [],
     "ask": []
