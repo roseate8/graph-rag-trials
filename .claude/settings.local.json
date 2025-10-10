@@ -62,7 +62,8 @@
       "Read(//e/**)",
       "Bash(PYTHONPATH=\"../naive-rag:../vector-ingest/src:$PYTHONPATH\" python -m streamlit run app.py)",
       "Bash(start http://localhost:8501)",
-      "Bash(PYTHONPATH=\"../naive-rag:../vector-ingest/src:$PYTHONPATH\" python app.py)"
+      "Bash(PYTHONPATH=\"../naive-rag:../vector-ingest/src:$PYTHONPATH\" python app.py)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
