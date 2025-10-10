@@ -135,6 +135,13 @@ class MilvusRetriever:
         self.embedding_service = EmbeddingService(model_name=embedding_model)
         self.milvus_config = get_config(milvus_profile)
         self.milvus_config.collection_name = collection_name
+
+        # Update embedding_dim based on the model being used
+        if "bge-m3" in embedding_model.lower():
+            self.milvus_config.embedding_dim = 1024
+        elif "bge-small" in embedding_model.lower():
+            self.milvus_config.embedding_dim = 384
+
         self.milvus_store = MilvusVectorStore(self.milvus_config)
         self.connected = False
         self._cache = EmbeddingCache()
