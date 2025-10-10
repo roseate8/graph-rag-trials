@@ -82,7 +82,7 @@ class CrossEncoderReRanker(BaseReRanker):
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name,
                 cache_dir=self.config.model_cache_dir,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+                dtype=torch.float16 if self.device == "cuda" else torch.float32
             )
             
             # Move to device and optimize
@@ -93,14 +93,15 @@ class CrossEncoderReRanker(BaseReRanker):
             if hasattr(self.model, 'half') and self.config.use_fp16 and self.device == "cuda":
                 self.model = self.model.half()
             
-            # Compile model for PyTorch 2.0+ if available and on GPU
-            # Note: torch.compile requires triton and doesn't work well on CPU
-            if hasattr(torch, 'compile') and self.device == "cuda" and torch.cuda.is_available():
-                try:
-                    self.model = torch.compile(self.model, mode='reduce-overhead')
-                    logger.debug("Model compiled with torch.compile for better performance")
-                except Exception as e:
-                    logger.debug(f"Could not compile model (this is OK on CPU): {e}")
+            # DISABLED: torch.compile requires Triton which may not be available
+            # torch.compile is not essential for inference and can cause compatibility issues
+            # If you have Triton installed and want to enable this, uncomment below:
+            # if hasattr(torch, 'compile') and self.device == "cuda":
+            #     try:
+            #         self.model = torch.compile(self.model, mode='reduce-overhead')
+            #         logger.debug("Model compiled with torch.compile")
+            #     except Exception as e:
+            #         logger.debug(f"Could not compile model: {e}")
             
             self.is_loaded = True
             load_time = time.time() - start_time
