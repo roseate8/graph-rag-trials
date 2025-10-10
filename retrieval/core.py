@@ -820,15 +820,15 @@ def main():
     
     # Step 1: Initialize system components
     print("1. Initializing RAG components...")
-    print("   - Collection: document_chunks (ECS documentation)")
-    print("   - Embedding model: BAAI/bge-small-en-v1.5 (384 dim)")
+    print("   - Collection: elastic_embeddings_m3 (ECS documentation)")
+    print("   - Embedding model: BAAI/bge-m3 (1024 dim)")
     print("   - Re-ranking: ENABLED (retrieval_multiplier=50)")
     print("   - Query decomposition: ENABLED (max_sub_queries=5)")
     print()
     rag = create_rag_system(
         llm_type="openai",
-        collection_name="document_chunks",
-        embedding_model="BAAI/bge-small-en-v1.5",
+        collection_name="elastic_embeddings_m3",
+        embedding_model="BAAI/bge-m3",
         enable_reranking=True,
         retrieval_multiplier=50,
         enable_query_decomposition=True,
