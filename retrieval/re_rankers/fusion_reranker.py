@@ -12,9 +12,17 @@ from dataclasses import dataclass
 from collections import defaultdict
 
 try:
-    from .retrieval import RetrievedChunk
+    from ..retrieval import RetrievedChunk
 except ImportError:
-    from retrieval import RetrievedChunk
+    try:
+        from retrieval import RetrievedChunk
+    except ImportError:
+        import sys
+        from pathlib import Path
+        parent_path = Path(__file__).parent.parent
+        if str(parent_path) not in sys.path:
+            sys.path.insert(0, str(parent_path))
+        from retrieval import RetrievedChunk
 
 logger = logging.getLogger(__name__)
 
