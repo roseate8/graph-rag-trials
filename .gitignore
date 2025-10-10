@@ -54,3 +54,6 @@ logs/
 # Input files (keep folder structure)
 input/*
 !input/.gitkeep
+
+# Conversation history (may contain API keys)
+conversation_history.json
