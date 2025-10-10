@@ -88,8 +88,14 @@ class RAGSystem:
         self.fusion_reranker = None
         if enable_query_decomposition:
             try:
-                from .decomposer import QueryDecomposer
-                from .re_rankers.fusion_reranker import FusionReranker
+                # Try relative imports first, then absolute
+                try:
+                    from .decomposer import QueryDecomposer
+                    from .re_rankers.fusion_reranker import FusionReranker
+                except ImportError:
+                    from decomposer import QueryDecomposer
+                    from re_rankers.fusion_reranker import FusionReranker
+
                 self.query_decomposer = QueryDecomposer(max_sub_queries=max_sub_queries)
                 self.fusion_reranker = FusionReranker(k_constant=fusion_k_constant)
                 logger.info(f"Query decomposition enabled (max_sub_queries={max_sub_queries}, fusion_k={fusion_k_constant})")

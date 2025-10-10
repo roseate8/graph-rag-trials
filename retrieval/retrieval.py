@@ -156,8 +156,14 @@ class MilvusRetriever:
             re_rankers_path = Path(__file__).parent / "re_rankers"
             if str(re_rankers_path) not in sys.path:
                 sys.path.insert(0, str(re_rankers_path))
-            from .re_rankers.reranker_model import create_reranker
-            from .re_rankers.config import ReRankerConfig
+
+            # Try relative imports first, then absolute
+            try:
+                from .re_rankers.reranker_model import create_reranker
+                from .re_rankers.config import ReRankerConfig
+            except ImportError:
+                from re_rankers.reranker_model import create_reranker
+                from re_rankers.config import ReRankerConfig
             
             # Create config from provided dict or use defaults
             if reranker_config:
