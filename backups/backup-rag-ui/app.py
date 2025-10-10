@@ -1,5 +1,5 @@
 """
-Flask backend API for RAG UI - connects to retrieval system.
+Flask backend API for RAG UI - connects to naive RAG system.
 """
 
 import sys
@@ -23,10 +23,10 @@ warnings.filterwarnings('ignore', category=UserWarning, module='google.protobuf'
 # Add paths to sys.path - use absolute paths to handle Streamlit working directory changes
 CURRENT_FILE = Path(__file__).absolute()
 PROJECT_ROOT = CURRENT_FILE.parent.parent
-RETRIEVAL_PATH = PROJECT_ROOT / "retrieval"
+NAIVE_RAG_PATH = PROJECT_ROOT / "naive-rag"
 VECTOR_INGEST_PATH = PROJECT_ROOT / "vector-ingest" / "src"
 
-sys.path.insert(0, str(RETRIEVAL_PATH))
+sys.path.insert(0, str(NAIVE_RAG_PATH))
 sys.path.insert(0, str(VECTOR_INGEST_PATH))
 
 # Import RAG system
@@ -41,9 +41,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-# Global RAG system instance and stats
+# Global RAG system instance
 rag_system: Optional[RAGSystem] = None
-embeddings_count: int = 0  # Cached embeddings count for metrics
 conversation_history_file = Path("conversation_history.json")
 
 # Thread-safe logging queue for real-time log streaming
@@ -223,7 +222,7 @@ def save_conversation_entry(query: str, result_data: Dict, initial_resources: Di
 
 def init_rag_system():
     """Initialize the RAG system with re-ranking enabled."""
-    global rag_system, embeddings_count
+    global rag_system
     
     try:
         logger.info("Initializing RAG system with re-ranking...")
@@ -240,9 +239,6 @@ def init_rag_system():
         stats = rag_system.get_system_stats()
         num_entities = stats.get('retriever_stats', {}).get('num_entities', 0)
         rerank_config = stats.get('reranking_config', {})
-        
-        # Cache the embeddings count for UI metrics
-        embeddings_count = num_entities
         
         logger.info(f"Connected to collection with {num_entities} document chunks")
         logger.info(f"Re-ranking enabled: {rerank_config.get('enabled', False)}")
@@ -297,68 +293,6 @@ def get_system_stats():
     except Exception as e:
         logger.error(f"Error getting system stats: {e}")
         return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/collection-metrics', methods=['GET'])
-def get_collection_metrics():
-    """Get real-time metrics from Milvus collection."""
-    global rag_system
-    
-    # Initialize RAG system if not already initialized
-    if not rag_system:
-        logger.info("Initializing RAG system for collection metrics...")
-        if not init_rag_system():
-            return jsonify({
-                "error": "Failed to initialize RAG system", 
-                "embeddings_count": 0,
-                "documents_count": 0
-            }), 503
-    
-    try:
-        # Get fresh stats from the retriever
-        stats = rag_system.retriever.get_collection_stats()
-        
-        if "error" in stats:
-            return jsonify({
-                "error": stats["error"],
-                "embeddings_count": 0,
-                "documents_count": 0
-            }), 503
-        
-        embeddings_count = stats.get("num_entities", 0)
-        
-        # Estimate document count - we can't easily get exact count without a search
-        # Use a simple estimation based on chunks (rough approximation)
-        documents_count = max(1, embeddings_count // 50)  # Assume ~50 chunks per doc
-        
-        return jsonify({
-            "embeddings_count": embeddings_count,
-            "documents_count": documents_count,
-            "collection_name": stats.get("collection_name", "unknown"),
-            "embedding_dim": stats.get("embedding_dim", 1024)
-        })
-        
-    except Exception as e:
-        logger.error(f"Failed to get collection metrics: {e}")
-        return jsonify({
-            "error": f"Failed to get metrics: {str(e)}",
-            "embeddings_count": 0,
-            "documents_count": 0
-        }), 500
-
-
-# Keep the old endpoint for backward compatibility
-@app.route('/api/embeddings-count', methods=['GET'])
-def get_embeddings_count():
-    """Get the embeddings count (legacy endpoint)."""
-    try:
-        metrics_response = get_collection_metrics()
-        if hasattr(metrics_response, 'get_json'):
-            data = metrics_response.get_json()
-            return jsonify({"count": data.get("embeddings_count", 0)})
-        return jsonify({"count": 0})
-    except Exception:
-        return jsonify({"count": 0})
 
 
 @app.route('/api/validate-api-key', methods=['POST'])
@@ -451,39 +385,14 @@ def process_query():
         sources = []
         retrieved_chunks_data = []
         for chunk in result.retrieved_chunks:
-            # Create comprehensive metadata dict from chunk attributes
+            # Create metadata dict from chunk attributes
             metadata = {
                 "chunk_id": chunk.chunk_id,
                 "doc_id": chunk.doc_id,
                 "word_count": chunk.word_count,
                 "section_path": chunk.section_path,
-                "chunk_type": getattr(chunk, 'chunk_type', 'unknown'),
-                "regions": getattr(chunk, 'regions', None),
-                "product_version": getattr(chunk, 'product_version', None),
-                "folder_path": getattr(chunk, 'folder_path', None),
-                "structural_metadata": getattr(chunk, 'structural_metadata', None),
-                "entity_metadata": getattr(chunk, 'entity_metadata', None)
+                "chunk_type": getattr(chunk, 'chunk_type', 'unknown')
             }
-
-            # DEBUG: Add mock metadata to test UI display
-            if metadata.get("regions") is None:
-                metadata["regions"] = ["United States", "Europe"]
-            if metadata.get("product_version") is None:
-                metadata["product_version"] = "v2.4"
-            if metadata.get("folder_path") is None:
-                metadata["folder_path"] = ["financial-reports", "annual-reports"]
-            if metadata.get("structural_metadata") is None:
-                metadata["structural_metadata"] = {
-                    "element_type": "paragraph",
-                    "page_number": 15,
-                    "is_heading": False
-                }
-            if metadata.get("entity_metadata") is None:
-                metadata["entity_metadata"] = {
-                    "organizations": ["Elastic N.V.", "SEC"],
-                    "locations": ["San Francisco", "Amsterdam"],
-                    "financial_metrics": ["revenue", "COGS"]
-                }
             
             source = {
                 "snippet": chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content,
@@ -503,29 +412,12 @@ def process_query():
                 "metadata": metadata
             })
         
-        # Get real-time collection metrics
-        try:
-            collection_metrics_response = get_collection_metrics()
-            if hasattr(collection_metrics_response, 'get_json'):
-                collection_data = collection_metrics_response.get_json()
-                current_embeddings_count = collection_data.get("embeddings_count", embeddings_count)
-                current_documents_count = collection_data.get("documents_count", 0)
-            else:
-                current_embeddings_count = embeddings_count
-                current_documents_count = 0
-        except Exception as e:
-            logger.warning(f"Could not get real-time metrics: {e}")
-            current_embeddings_count = embeddings_count
-            current_documents_count = 0
-        
-        # Prepare metrics for UI with re-ranking info and real-time collection data
+        # Prepare metrics for UI with re-ranking info
         metrics = {
             "total_time": f"{total_time:.2f}s",
             "tokens_used": f"{result.context_token_count + (result.response_tokens or 0)}",
             "cpu_peak": f"{final_resources.get('cpu_percent', 0):.1f}%",
             "memory_peak": f"{final_resources.get('memory_used_mb', 0):.1f} MB",
-            "embeddings_count": f"{current_embeddings_count:,}",  # Real-time embeddings count
-            "documents_count": f"{current_documents_count:,}",    # Real-time documents count
             "retrieval_time": f"{result.retrieval_time:.2f}s" if result.retrieval_time else "N/A",
             "generation_time": f"{result.generation_time:.2f}s" if result.generation_time else "N/A",
             "model": result.model_used,

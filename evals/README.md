@@ -41,5 +41,5 @@ Copy `.env.example` to `.env` and configure your API keys and settings.
 
 The evaluation framework is designed to be:
 - **Self-contained**: All evaluation code remains in this directory
-- **Callable**: Can be invoked from other parts of the system (e.g., naive-rag)
+- **Callable**: Can be invoked from other parts of the system (e.g., retrieval)
 - **Modular**: Easy to add new evaluation frameworks and metrics

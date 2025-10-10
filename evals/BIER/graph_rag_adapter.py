@@ -12,13 +12,13 @@ import logging
 
 # Add project paths for imports
 project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root / "naive-rag"))
+sys.path.insert(0, str(project_root / "retrieval"))
 sys.path.insert(0, str(project_root / "vector-ingest" / "src"))
 
 try:
     from retrieval import MilvusRetriever, RetrievedChunk
 except ImportError as e:
-    raise ImportError(f"Could not import MilvusRetriever: {e}. Ensure naive-rag module is available.")
+    raise ImportError(f"Could not import MilvusRetriever: {e}. Ensure retrieval module is available.")
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,9 @@ class GraphRAGAdapter:
     
     def __init__(
         self,
-        embedding_model: str = "BAAI/bge-small-en-v1.5",
+        embedding_model: str = "BAAI/bge-m3",
         milvus_profile: str = "production", 
-        collection_name: str = "document_chunks",
+        collection_name: str = "elastic_embeddings_m3",
         enable_reranking: bool = True,
         reranker_config: Optional[Dict] = None,
         **kwargs

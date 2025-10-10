@@ -14,7 +14,7 @@
         <!-- Header -->
         <header class="header">
             <h1>RAG trials</h1>
-            <p class="subtitle">Embeddings based on Elasticsearch's public documents.</p>
+            <p class="subtitle">192 documents with ~15000 embeddings based on Elasticsearch dataset. You've to generate new chunks via terminal using the chunking code files.</p>
         </header>
 
         <!-- Main Content -->
@@ -34,7 +34,7 @@
                             ></textarea>
                             <div class="bottom-controls-bar">
                                 <select id="chunkTypeSelect" class="bottom-edge-dropdown" title="Choose search method">
-                                    <option value="retrieval">retrieval</option>
+                                    <option value="naive-rag">naive-rag</option>
                                 </select>
                                 <button type="submit" class="search-submit-btn" id="searchBtn">
                                     <svg class="submit-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -101,13 +101,6 @@
                                 <select id="modelSelect" class="input-field model-field">
                                     <option value="gpt-4o-mini">GPT-4o Mini</option>
                                     <option value="gpt-4o">GPT-4o</option>
-                                    <option value="gpt-5">GPT-5</option>
-                                    <option value="gpt-5-chat-latest">GPT-5 Chat Latest</option>
-                                    <option value="gpt-5-mini">GPT-5 Mini</option>
-                                    <option value="gpt-5-nano">GPT-5 Nano</option>
-                                    <option value="gpt-4.1">GPT-4.1</option>
-                                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                                    <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
                                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                                 </select>
                             </div>
@@ -160,14 +153,6 @@
                             <div class="metric-row">
                                 <span class="metric-label">Memory (peak):</span>
                                 <span class="metric-value" id="memoryPeak">--</span>
-                            </div>
-                            <div class="metric-row">
-                                <span class="metric-label">Total embeddings:</span>
-                                <span class="metric-value" id="embeddingsCount">--</span>
-                            </div>
-                            <div class="metric-row">
-                                <span class="metric-label">Total documents:</span>
-                                <span class="metric-value" id="documentsCount">--</span>
                             </div>
                         </div>
                     </div>

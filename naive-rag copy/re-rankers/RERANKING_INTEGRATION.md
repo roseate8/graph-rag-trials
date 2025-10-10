@@ -35,7 +35,7 @@ The re-ranking system has been successfully integrated into the main workflow, p
 - `final_chunks`: Number of chunks after re-ranking
 - `retrieval_method`: Description of retrieval pattern
 
-### 2. Core RAG System (naive-rag/core.py)
+### 2. Core RAG System (retrieval/core.py)
 
 **Default Behavior:**
 - CLI now uses re-ranking by default
@@ -49,7 +49,7 @@ def test_reranking_comparison(test_query="...", top_k=10):
     # Returns detailed comparison results
 ```
 
-### 3. Retrieval System (naive-rag/retrieval.py)
+### 3. Retrieval System (retrieval/retrieval.py)
 
 **Enhanced Capabilities:**
 - Two-stage retrieval process
@@ -62,7 +62,7 @@ def test_reranking_comparison(test_query="...", top_k=10):
 ### Re-ranker Configuration
 
 ```python
-from naive_rag.re_rankers import ReRankerConfig
+from retrieval.re_rankers import ReRankerConfig
 
 # Default configuration
 config = ReRankerConfig()
@@ -85,7 +85,7 @@ accurate_config = ReRankerConfig(
 ### System Integration
 
 ```python
-from naive_rag import create_rag_system
+from retrieval import create_rag_system
 
 # Default: re-ranking enabled
 rag = create_rag_system(
@@ -123,7 +123,7 @@ rag = create_rag_system(
 
 ```python
 # Simple query with re-ranking (default)
-from naive_rag import ask_rag
+from retrieval import ask_rag
 
 response = ask_rag(
     "What are the key financial metrics?",
@@ -135,7 +135,7 @@ response = ask_rag(
 
 ```python
 # Compare retrieval methods
-from naive_rag.core import test_reranking_comparison
+from retrieval.core import test_reranking_comparison
 
 results = test_reranking_comparison(
     test_query="What are the revenue trends?",

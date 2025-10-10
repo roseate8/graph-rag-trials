@@ -34,7 +34,7 @@
 - Maintain document context for better business insights
 - Reduce compute costs through intelligent caching
 
-### 🤖 **naive-rag/** - Retrieval & Generation Engine
+### 🤖 **retrieval/** - Retrieval & Generation Engine
 **Production-ready RAG system with advanced re-ranking capabilities**
 
 **Key Features:**
@@ -126,7 +126,7 @@ Enterprise Documents → Parallel Processing → Smart Caching → Structured Ou
 3. **Parallel Performance**: Enterprise-scale processing with caching
 4. **Business Intelligence**: Entity extraction and metadata enrichment
 
-## 🎯 Next Phase: naive-rag/
+## 🎯 Next Phase: retrieval/
 
 ### Planned Business Capabilities
 - **Intelligent Query Processing**: Understand business context in questions

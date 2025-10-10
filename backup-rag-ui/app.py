@@ -1,5 +1,5 @@
 """
-Flask backend API for RAG UI - connects to naive RAG system.
+Flask backend API for RAG UI - connects to retrieval system.
 """
 
 import sys
@@ -23,10 +23,10 @@ warnings.filterwarnings('ignore', category=UserWarning, module='google.protobuf'
 # Add paths to sys.path - use absolute paths to handle Streamlit working directory changes
 CURRENT_FILE = Path(__file__).absolute()
 PROJECT_ROOT = CURRENT_FILE.parent.parent
-NAIVE_RAG_PATH = PROJECT_ROOT / "naive-rag"
+RETRIEVAL_PATH = PROJECT_ROOT / "retrieval"
 VECTOR_INGEST_PATH = PROJECT_ROOT / "vector-ingest" / "src"
 
-sys.path.insert(0, str(NAIVE_RAG_PATH))
+sys.path.insert(0, str(RETRIEVAL_PATH))
 sys.path.insert(0, str(VECTOR_INGEST_PATH))
 
 # Import RAG system
