@@ -419,11 +419,47 @@ class MilvusRetriever:
             # Fall back to original chunks if re-ranking fails
             return chunks[:top_k]
     
+    def retrieve_multi_query(
+        self,
+        queries: List[str],
+        top_k_per_query: int = 10,
+        min_similarity: float = 0.0
+    ) -> Dict[str, List[RetrievedChunk]]:
+        """Retrieve chunks for multiple queries (used in query decomposition).
+
+        Args:
+            queries: List of query strings
+            top_k_per_query: Number of chunks to retrieve per query
+            min_similarity: Minimum similarity threshold
+
+        Returns:
+            Dictionary mapping each query to its retrieved chunks
+        """
+        if not self.connected:
+            logger.error("Not connected to Milvus. Call connect() first.")
+            return {}
+
+        results = {}
+        for query in queries:
+            try:
+                chunks = self.retrieve(
+                    query=query,
+                    top_k=top_k_per_query,
+                    min_similarity=min_similarity,
+                    retrieval_multiplier=1  # No extra retrieval for multi-query
+                )
+                results[query] = chunks
+            except Exception as e:
+                logger.error(f"Error retrieving chunks for query '{query}': {e}")
+                results[query] = []
+
+        return results
+
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the Milvus collection."""
         if not self.connected:
             return {"error": "Not connected to Milvus"}
-        
+
         return self.milvus_store.get_stats()
     
     def __enter__(self):
