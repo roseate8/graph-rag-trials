@@ -93,13 +93,14 @@ class CrossEncoderReRanker(BaseReRanker):
             if hasattr(self.model, 'half') and self.config.use_fp16 and self.device == "cuda":
                 self.model = self.model.half()
             
-            # Compile model for PyTorch 2.0+ if available
-            if hasattr(torch, 'compile') and self.device != "cpu":
+            # Compile model for PyTorch 2.0+ if available and on GPU
+            # Note: torch.compile requires triton and doesn't work well on CPU
+            if hasattr(torch, 'compile') and self.device == "cuda" and torch.cuda.is_available():
                 try:
                     self.model = torch.compile(self.model, mode='reduce-overhead')
                     logger.debug("Model compiled with torch.compile for better performance")
                 except Exception as e:
-                    logger.debug(f"Could not compile model: {e}")
+                    logger.debug(f"Could not compile model (this is OK on CPU): {e}")
             
             self.is_loaded = True
             load_time = time.time() - start_time
