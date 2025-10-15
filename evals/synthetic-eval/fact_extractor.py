@@ -323,14 +323,15 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
 
             facts_data = json.loads(response_text)
 
-            # Convert to AtomicFact objects with deduplication
+            # Convert to AtomicFact objects with quality filtering and deduplication
             facts = []
             seen_facts = set()  # Track (fact_text, answer_span) tuples to avoid duplicates
-            
+
             for fact_data in facts_data:
-                fact_type = fact_data.get('fact_type', 'triple')
+                fact_type = fact_data.get('fact_type', 'factual_claim')
                 answer_span = fact_data.get('answer_span', '')
                 fact_text = fact_data.get('fact_text', '')
+                entities = fact_data.get('entities', [])
 
                 # Skip if None or empty
                 if answer_span is None or not fact_text:
@@ -342,7 +343,11 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
                     answer_span = str(answer_span)
                 if not answer_span:  # Skip empty values
                     continue
-                
+
+                # Quality filter: Check entity validity
+                if not self._is_valid_entity_set(entities, fact_text):
+                    continue  # Skip low-quality facts
+
                 # Deduplication: create unique key based on fact text and answer
                 dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
                 if dedup_key in seen_facts:
@@ -351,23 +356,11 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
 
                 start, end = find_answer_span(answer_span, content)
 
-                # Build metadata based on fact type
-                if fact_type == "key_value":
-                    metadata = {
-                        "key": fact_data.get('key', ''),
-                        "value": fact_data.get('value', ''),
-                        "source": "llm"
-                    }
-                elif fact_type == "triple":
-                    metadata = {
-                        "triple": fact_data.get('triple', []),
-                        "source": "llm"
-                    }
-                else:  # date, number, currency
-                    metadata = {
-                        "source": "llm",
-                        "extracted_type": fact_type
-                    }
+                # Build metadata - simpler for semantic propositions
+                metadata = {
+                    "source": "llm",
+                    "proposition_type": fact_type
+                }
 
                 fact = AtomicFact(
                     fact_id=self._generate_fact_id(chunk_id),
@@ -377,7 +370,7 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
                     answer_span=answer_span,
                     answer_start=start,
                     answer_end=end,
-                    entities=fact_data.get('entities', []),
+                    entities=entities,
                     metadata=metadata
                 )
                 facts.append(fact)
@@ -500,14 +493,15 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
 
             facts_data = json.loads(response_text)
 
-            # Convert to AtomicFact objects with deduplication
+            # Convert to AtomicFact objects with quality filtering and deduplication
             facts = []
             seen_facts = set()  # Track (fact_text, answer_span) tuples to avoid duplicates
-            
+
             for fact_data in facts_data:
-                fact_type = fact_data.get('fact_type', 'triple')
+                fact_type = fact_data.get('fact_type', 'factual_claim')
                 answer_span = fact_data.get('answer_span', '')
                 fact_text = fact_data.get('fact_text', '')
+                entities = fact_data.get('entities', [])
 
                 # Skip if None or empty
                 if answer_span is None or not fact_text:
@@ -519,7 +513,11 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
                     answer_span = str(answer_span)
                 if not answer_span:  # Skip empty values
                     continue
-                
+
+                # Quality filter: Check entity validity
+                if not self._is_valid_entity_set(entities, fact_text):
+                    continue  # Skip low-quality facts
+
                 # Deduplication: create unique key based on fact text and answer
                 dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
                 if dedup_key in seen_facts:
@@ -528,23 +526,11 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
 
                 start, end = find_answer_span(answer_span, content)
 
-                # Build metadata based on fact type
-                if fact_type == "key_value":
-                    metadata = {
-                        "key": fact_data.get('key', ''),
-                        "value": fact_data.get('value', ''),
-                        "source": "llm"
-                    }
-                elif fact_type == "triple":
-                    metadata = {
-                        "triple": fact_data.get('triple', []),
-                        "source": "llm"
-                    }
-                else:  # date, number, currency
-                    metadata = {
-                        "source": "llm",
-                        "extracted_type": fact_type
-                    }
+                # Build metadata - simpler for semantic propositions
+                metadata = {
+                    "source": "llm",
+                    "proposition_type": fact_type
+                }
 
                 fact = AtomicFact(
                     fact_id=self._generate_fact_id(chunk_id),
@@ -554,7 +540,7 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
                     answer_span=answer_span,
                     answer_start=start,
                     answer_end=end,
-                    entities=fact_data.get('entities', []),
+                    entities=entities,
                     metadata=metadata
                 )
                 facts.append(fact)
