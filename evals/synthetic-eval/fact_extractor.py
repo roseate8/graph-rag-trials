@@ -134,29 +134,21 @@ class FactExtractor:
         return await asyncio.gather(*tasks, return_exceptions=False)
 
     async def _extract_facts_async(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
-        """Async version of extract_facts."""
+        """Async version of extract_facts using LLM-only extraction."""
         chunk_id = chunk.get('chunk_id', '')
         content = chunk.get('content', '')
 
         if not content:
             return []
 
-        facts = []
-
-        # 1. Extract structured data with regex (synchronous)
-        facts.extend(self._extract_date_facts(chunk_id, content))
-        facts.extend(self._extract_number_facts(chunk_id, content))
-        facts.extend(self._extract_currency_facts(chunk_id, content))
-
-        # 2. Extract semantic facts with async LLM call
-        semantic_facts = await self._extract_semantic_facts_llm_async(chunk_id, content)
-        facts.extend(semantic_facts)
-
+        # Single LLM call for all fact types (structured + semantic)
+        facts = await self._extract_all_facts_llm_async(chunk_id, content)
+        
         return facts
 
     def extract_facts(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
         """
-        Extract all atomic facts from a chunk.
+        Extract all atomic facts from a chunk using LLM-only extraction.
 
         Args:
             chunk: Chunk dictionary with 'chunk_id' and 'content'
@@ -173,15 +165,8 @@ class FactExtractor:
 
         logger.debug(f"Extracting facts from chunk {chunk_id}")
 
-        facts = []
-
-        # 1. Extract structured data with regex
-        facts.extend(self._extract_date_facts(chunk_id, content))
-        facts.extend(self._extract_number_facts(chunk_id, content))
-        facts.extend(self._extract_currency_facts(chunk_id, content))
-
-        # 2. Extract semantic facts with unified LLM call (optimized)
-        facts.extend(self._extract_semantic_facts_llm(chunk_id, content))
+        # Single LLM call for all fact types (structured + semantic)
+        facts = self._extract_all_facts_llm(chunk_id, content)
 
         logger.debug(f"Extracted {len(facts)} facts from chunk {chunk_id}")
 
@@ -408,16 +393,16 @@ class FactExtractor:
         
         return True
     
-    async def _extract_semantic_facts_llm_async(self, chunk_id: str, content: str) -> List[AtomicFact]:
+    async def _extract_all_facts_llm_async(self, chunk_id: str, content: str) -> List[AtomicFact]:
         """
-        Async version: Extract both triples and key-value pairs in a single unified LLM call.
+        Extract ALL fact types (dates, numbers, currencies, triples, key-values) in a single LLM call.
 
         Args:
             chunk_id: Chunk identifier
             content: Chunk content
 
         Returns:
-            List of AtomicFact objects for both triples and key-values
+            List of AtomicFact objects for all fact types
         """
         # Limit content length for LLM
         max_content_len = 2000
