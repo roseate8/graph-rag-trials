@@ -32,12 +32,15 @@ from chunking.processors.llm_utils import SecureAPIKeyManager
 from retrieval.retrieval import MilvusRetriever
 
 
-# Setup logging
+# Setup logging with tqdm compatibility
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Suppress verbose httpx logging during progress bars
+logging.getLogger('httpx').setLevel(logging.WARNING)
 
 
 def main():
@@ -104,7 +107,8 @@ def main():
 
         # Process chunks with progress bar
         logger.info(f"  Processing {len(sampled_chunks)} chunks...")
-        for chunk in tqdm(sampled_chunks, desc="Extracting facts", unit="chunk"):
+        pbar = tqdm(sampled_chunks, desc="Extracting facts", unit="chunk", ncols=100)
+        for chunk in pbar:
             try:
                 facts = extractor.extract_facts(chunk)
                 all_facts.extend(facts)
@@ -115,12 +119,13 @@ def main():
 
                 # Limit total facts to prevent memory issues
                 if len(all_facts) >= config.max_facts_per_chunk * len(sampled_chunks):
-                    logger.info(f"  Reached fact limit ({len(all_facts)} facts), stopping extraction")
+                    pbar.write(f"  Reached fact limit ({len(all_facts)} facts), stopping extraction")
                     break
 
             except Exception as e:
-                logger.warning(f"  Error processing chunk {chunk.get('chunk_id', 'unknown')}: {e}")
+                pbar.write(f"  Error processing chunk {chunk.get('chunk_id', 'unknown')}: {e}")
                 continue
+        pbar.close()
         
         logger.info(f"  Extracted {len(all_facts)} total facts")
         logger.info(f"  Average facts per chunk: {len(all_facts) / len(sampled_chunks):.1f}")

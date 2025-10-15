@@ -304,9 +304,11 @@ Output ONLY a single number (0, 1, 2, or 3). No explanation."""
 
         all_qrels = {}
 
-        for query in tqdm(queries, desc="Labeling queries", unit="query"):
+        pbar = tqdm(queries, desc="Labeling queries", unit="query", ncols=100)
+        for query in pbar:
             qrels = self.label_all_chunks(query, all_chunks)
             all_qrels[query.query_id] = qrels
+        pbar.close()
 
         logger.info(f"Completed labeling for {len(queries)} queries")
         

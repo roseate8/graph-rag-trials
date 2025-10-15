@@ -345,15 +345,17 @@ Output ONLY valid JSON, no other text."""
         logger.info("Generating single-hop queries...")
         single_hop_count = 0
 
-        for fact in tqdm(all_facts, desc="Generating single-hop queries", unit="fact"):
+        pbar = tqdm(all_facts, desc="Generating single-hop queries", unit="fact", ncols=100)
+        for fact in pbar:
             queries = self.generate_single_hop(fact)
             all_queries.extend(queries)
             single_hop_count += len(queries)
 
             # Stop if we have enough queries
             if len(all_queries) >= self.config.target_questions:
-                logger.info(f"Reached target of {self.config.target_questions} queries")
+                pbar.write(f"Reached target of {self.config.target_questions} queries")
                 break
+        pbar.close()
         
         # 2. Generate multi-hop queries if we haven't reached target
         multi_hop_count = 0
