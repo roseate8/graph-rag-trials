@@ -16,10 +16,10 @@ class SyntheticEvalConfig:
     num_clusters: int = 10  # Reduced clusters for faster K-means
     
     # Query generation parameters
-    target_questions: int = 100  # Reduced for faster testing
-    queries_per_fact_min: int = 2  # Reduced for efficiency
-    queries_per_fact_max: int = 3  # Reduced for efficiency
-    multi_hop_ratio: float = 0.15  # Slightly reduced multi-hop
+    target_questions: int = 200  # Updated to generate more queries
+    queries_per_fact_min: int = 1  # Reduced to use more diverse facts
+    queries_per_fact_max: int = 2  # Reduced to use more diverse facts
+    multi_hop_ratio: float = 0.4  # 40% multi-hop, 60% single-hop
     
     # LLM parameters
     model_name: str = "gpt-4.1-nano"

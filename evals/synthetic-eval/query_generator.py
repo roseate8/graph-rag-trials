@@ -331,6 +331,11 @@ Output ONLY valid JSON, no other text."""
         """
         Generate both single-hop and multi-hop queries from all facts.
         
+        Uses proper budget allocation:
+        - Calculates single-hop and multi-hop targets upfront
+        - Generates each type independently
+        - Combines and shuffles for diverse final dataset
+        
         Args:
             all_facts: List of all extracted facts
             
@@ -339,49 +344,106 @@ Output ONLY valid JSON, no other text."""
         """
         logger.info(f"Generating queries from {len(all_facts)} facts...")
         
-        all_queries = []
+        # STEP 1: Calculate targets upfront based on multi_hop_ratio
+        target_multi_hop = int(self.config.target_questions * self.config.multi_hop_ratio)
+        target_single_hop = self.config.target_questions - target_multi_hop
+        
+        logger.info(f"Query budget allocation:")
+        logger.info(f"  - Single-hop target: {target_single_hop} ({(1-self.config.multi_hop_ratio)*100:.0f}%)")
+        logger.info(f"  - Multi-hop target: {target_multi_hop} ({self.config.multi_hop_ratio*100:.0f}%)")
+        logger.info(f"  - Total target: {self.config.target_questions}")
+        
+        single_hop_queries = []
+        multi_hop_queries = []
 
-        # 1. Generate single-hop queries
-        logger.info("Generating single-hop queries...")
-        single_hop_count = 0
-
+        # STEP 2: Generate single-hop queries up to target
+        logger.info(f"\n[Phase 1/2] Generating single-hop queries (target: {target_single_hop})...")
+        
         pbar = tqdm(all_facts, desc="Generating single-hop queries", unit="fact", ncols=100)
         for fact in pbar:
-            queries = self.generate_single_hop(fact)
-            all_queries.extend(queries)
-            single_hop_count += len(queries)
-
-            # Stop if we have enough queries
-            if len(all_queries) >= self.config.target_questions:
-                pbar.write(f"Reached target of {self.config.target_questions} queries")
+            # Stop if we've reached the single-hop target
+            if len(single_hop_queries) >= target_single_hop:
+                pbar.write(f"✓ Reached single-hop target of {target_single_hop} queries")
                 break
+            
+            queries = self.generate_single_hop(fact)
+            single_hop_queries.extend(queries)
+            
+            # Update progress bar with current count
+            pbar.set_postfix({"generated": len(single_hop_queries), "target": target_single_hop})
         pbar.close()
         
-        # 2. Generate multi-hop queries if we haven't reached target
-        multi_hop_count = 0
-        if len(all_queries) < self.config.target_questions:
-            logger.info("Generating multi-hop queries...")
-            
-            fact_pairs = self.find_linkable_facts(all_facts)
-            multi_hop_queries = self.generate_multi_hop(fact_pairs)
-            
-            all_queries.extend(multi_hop_queries)
-            multi_hop_count = len(multi_hop_queries)
+        actual_single_hop = len(single_hop_queries)
+        logger.info(f"✓ Generated {actual_single_hop} single-hop queries")
         
-        # Trim to target size
+        # STEP 3: Generate multi-hop queries from fact pairs
+        logger.info(f"\n[Phase 2/2] Generating multi-hop queries (target: {target_multi_hop})...")
+        
+        # Find linkable fact pairs across different chunks
+        logger.info("  Finding linkable fact pairs...")
+        fact_pairs = self.find_linkable_facts(all_facts)
+        
+        if len(fact_pairs) == 0:
+            logger.warning("  ⚠ No linkable fact pairs found! Skipping multi-hop generation.")
+            logger.warning("  This may indicate that facts don't share entities across chunks.")
+        else:
+            logger.info(f"  Found {len(fact_pairs)} linkable fact pairs")
+            logger.info(f"  Generating multi-hop queries...")
+            
+            # Generate multi-hop queries with progress tracking
+            pbar_multi = tqdm(fact_pairs, desc="Generating multi-hop queries", unit="pair", ncols=100)
+            for fact1, fact2 in pbar_multi:
+                # Stop if we've reached the multi-hop target
+                if len(multi_hop_queries) >= target_multi_hop:
+                    pbar_multi.write(f"✓ Reached multi-hop target of {target_multi_hop} queries")
+                    break
+                
+                # Generate query from this fact pair
+                queries = self.generate_multi_hop([(fact1, fact2)])
+                multi_hop_queries.extend(queries)
+                
+                # Update progress bar
+                pbar_multi.set_postfix({"generated": len(multi_hop_queries), "target": target_multi_hop})
+            pbar_multi.close()
+        
+        actual_multi_hop = len(multi_hop_queries)
+        logger.info(f"✓ Generated {actual_multi_hop} multi-hop queries")
+        
+        # STEP 4: Combine all queries
+        all_queries = single_hop_queries + multi_hop_queries
+        
+        # Shuffle to mix single-hop and multi-hop queries
+        import random
+        random.seed(42)  # For reproducibility
+        random.shuffle(all_queries)
+        
+        # STEP 5: Trim to exact target if we over-generated
         if len(all_queries) > self.config.target_questions:
+            logger.info(f"  Trimming {len(all_queries)} queries to target {self.config.target_questions}")
             all_queries = all_queries[:self.config.target_questions]
+            # Recalculate actual counts after trimming
+            actual_single_hop = sum(1 for q in all_queries if q.query_type == "single_hop")
+            actual_multi_hop = sum(1 for q in all_queries if q.query_type == "multi_hop")
         
-        # Generate stats
+        # STEP 6: Generate comprehensive stats
         stats = {
             'total_queries': len(all_queries),
-            'single_hop': single_hop_count,
-            'multi_hop': multi_hop_count,
+            'single_hop': actual_single_hop,
+            'multi_hop': actual_multi_hop,
+            'target_single_hop': target_single_hop,
+            'target_multi_hop': target_multi_hop,
             'facts_used': len(all_facts),
+            'fact_pairs_found': len(fact_pairs) if fact_pairs else 0,
             'query_styles': self._count_styles(all_queries)
         }
         
-        logger.info(f"Generated {len(all_queries)} total queries ({single_hop_count} single-hop, {multi_hop_count} multi-hop)")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Query Generation Complete!")
+        logger.info(f"{'='*60}")
+        logger.info(f"Generated {len(all_queries)} total queries:")
+        logger.info(f"  - Single-hop: {actual_single_hop}/{target_single_hop} ({actual_single_hop/len(all_queries)*100:.1f}%)")
+        logger.info(f"  - Multi-hop: {actual_multi_hop}/{target_multi_hop} ({actual_multi_hop/len(all_queries)*100:.1f}%)")
+        logger.info(f"{'='*60}\n")
         
         return all_queries, stats
     
