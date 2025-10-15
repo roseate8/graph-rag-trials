@@ -299,18 +299,15 @@ Output ONLY a single number (0, 1, 2, or 3). No explanation."""
         """
         if batch_size is None:
             batch_size = self.config.batch_size
-        
+
         logger.info(f"Batch labeling {len(queries)} queries...")
-        
+
         all_qrels = {}
-        
-        for i, query in enumerate(queries):
-            if i % 10 == 0:
-                logger.info(f"  Processing query {i}/{len(queries)}...")
-            
+
+        for query in tqdm(queries, desc="Labeling queries", unit="query"):
             qrels = self.label_all_chunks(query, all_chunks)
             all_qrels[query.query_id] = qrels
-        
+
         logger.info(f"Completed labeling for {len(queries)} queries")
         
         return all_qrels
