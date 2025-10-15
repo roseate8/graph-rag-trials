@@ -193,59 +193,90 @@ class FactExtractor:
         return f"{chunk_id}_fact_{self.fact_counter}"
     
     def _extract_date_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract date facts using regex - optimized."""
+        """Extract date facts using regex with deduplication."""
         facts = []
         dates = extract_dates(content)
         
+        # Track seen dates to avoid duplicates
+        seen_dates = set()
+        
         # Limit dates to avoid too many facts
-        for date in dates[:5]:  # Max 5 dates per chunk
+        for date in dates:
+            # Skip duplicates
+            if date in seen_dates:
+                continue
+            
             start, end = find_answer_span(date, content)
             if start == -1:  # Skip if not found
                 continue
             
-            # Optimized context extraction
-            context_start = max(0, start - 30)  # Reduced context size
-            context_end = min(len(content), end + 30)
-            context = content[context_start:context_end].strip()
+            # Get context
+            context_start = max(0, start - 50)
+            context_end = min(len(content), end + 50)
+            context = content[context_start:context_end]
+            
+            # Skip if context suggests code/markup
+            if self._is_code_or_markup_context(context):
+                continue
+            
+            seen_dates.add(date)
             
             fact = AtomicFact(
                 fact_id=self._generate_fact_id(chunk_id),
                 chunk_id=chunk_id,
                 fact_type="date",
-                fact_text=f"Date: {date}",  # Simplified fact text
+                fact_text=f"Date: {date}",
                 answer_span=date,
                 answer_start=start,
                 answer_end=end,
                 entities=[date],
-                metadata={"pattern": "regex", "context": context}
+                metadata={"pattern": "regex", "context": context.strip()[:100]}
             )
             facts.append(fact)
+            
+            if len(facts) >= 5:  # Max 5 dates per chunk
+                break
         
         return facts
     
     def _extract_number_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract numeric facts using regex - optimized."""
+        """Extract numeric facts using regex with deduplication and quality filtering."""
         facts = []
         numbers = extract_numbers(content)
+        
+        # Track seen numbers to avoid duplicates
+        seen_numbers = set()
         
         # Pre-filter and limit in one pass for efficiency
         significant_numbers = []
         for number in numbers:
-            if self._is_significant_number(number):
-                significant_numbers.append(number)
-                if len(significant_numbers) >= 5:  # Reduced limit
-                    break
-        
-        for number in significant_numbers:
-            start, end = find_answer_span(number, content)
-            if start == -1:
+            # Skip if already seen (deduplication)
+            if number in seen_numbers:
                 continue
             
-            # Optimized context extraction
-            context_start = max(0, start - 30)
-            context_end = min(len(content), end + 30)
-            context = content[context_start:context_end].strip()
-            
+            if self._is_significant_number(number):
+                # Get context to verify it's business content
+                start, end = find_answer_span(number, content)
+                if start == -1:
+                    continue
+                
+                # Check context for HTML/JavaScript pollution
+                context_start = max(0, start - 50)
+                context_end = min(len(content), end + 50)
+                context = content[context_start:context_end]
+                
+                # Skip if context suggests code/markup
+                if self._is_code_or_markup_context(context):
+                    continue
+                
+                seen_numbers.add(number)
+                significant_numbers.append((number, start, end, context))
+                
+                if len(significant_numbers) >= 5:  # Limit per chunk
+                    break
+        
+        # Create facts from filtered numbers
+        for number, start, end, context in significant_numbers:
             fact = AtomicFact(
                 fact_id=self._generate_fact_id(chunk_id),
                 chunk_id=chunk_id,
@@ -255,37 +286,85 @@ class FactExtractor:
                 answer_start=start,
                 answer_end=end,
                 entities=[number],
-                metadata={"pattern": "regex", "context": context}
+                metadata={"pattern": "regex", "context": context.strip()[:100]}  # Limit context size
             )
             facts.append(fact)
         
         return facts
     
+    def _is_code_or_markup_context(self, context: str) -> bool:
+        """
+        Detect if context is from HTML/CSS/JavaScript code rather than business content.
+        
+        Args:
+            context: Text context around the extracted value
+            
+        Returns:
+            True if context suggests code/markup
+        """
+        # Common HTML/CSS/JavaScript indicators
+        code_indicators = [
+            '<td', '</td>', '<tr', '</tr>', '<div', '</div>',  # HTML tags
+            'class=', 'id=', 'style=',  # HTML attributes
+            'colspan=', 'rowspan=', 'href=',  # HTML table/link attributes
+            'var ', 'const ', 'let ', 'function(',  # JavaScript keywords
+            '.css', '.js', '$(', 'jQuery',  # JS/jQuery
+            '<!--', '-->', '/*', '*/',  # Comments
+            '{', '}', '();',  # Code syntax
+            'offsetWidth', 'offsetHeight', 'padding', 'margin',  # CSS properties
+            'bw', 'bwalign', 'bwpadl',  # Custom CSS class prefixes
+        ]
+        
+        # Check for multiple indicators (more robust than single match)
+        context_lower = context.lower()
+        indicator_count = sum(1 for indicator in code_indicators if indicator.lower() in context_lower)
+        
+        # If 2+ indicators found, likely code/markup
+        return indicator_count >= 2
+    
     def _extract_currency_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract currency amounts using regex."""
+        """Extract currency amounts using regex with deduplication."""
         facts = []
         currencies = extract_currencies(content)
         
+        # Track seen currencies to avoid duplicates
+        seen_currencies = set()
+        
         for currency in currencies:
+            # Skip duplicates
+            if currency in seen_currencies:
+                continue
+            
             start, end = find_answer_span(currency, content)
+            if start == -1:
+                continue
             
             # Get context
             context_start = max(0, start - 50)
             context_end = min(len(content), end + 50)
             context = content[context_start:context_end]
             
+            # Skip if context suggests code/markup
+            if self._is_code_or_markup_context(context):
+                continue
+            
+            seen_currencies.add(currency)
+            
             fact = AtomicFact(
                 fact_id=self._generate_fact_id(chunk_id),
                 chunk_id=chunk_id,
                 fact_type="currency",
-                fact_text=f"Currency amount: {currency} (context: {context})",
+                fact_text=f"Currency: {currency}",
                 answer_span=currency,
                 answer_start=start,
                 answer_end=end,
                 entities=[currency],
-                metadata={"pattern": "regex", "context": context}
+                metadata={"pattern": "regex", "context": context.strip()[:100]}
             )
             facts.append(fact)
+            
+            if len(facts) >= 5:  # Limit per chunk
+                break
         
         return facts
     
