@@ -1,5 +1,9 @@
 """
-Atomic fact extractor using regex patterns and LLM.
+Semantic proposition extractor for generating evaluation datasets.
+
+Extracts self-contained semantic propositions (claims) from business documents
+rather than low-level atomic data types. This approach produces higher-quality
+facts suitable for question generation.
 """
 
 import sys
@@ -8,7 +12,7 @@ import logging
 import re
 import asyncio
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from dataclasses import dataclass, asdict
 
 # Add project root to path
@@ -18,45 +22,46 @@ vector_ingest_path = project_root / "vector-ingest" / "src"
 sys.path.insert(0, str(vector_ingest_path))
 
 from chunking.processors.llm_utils import SecureAPIKeyManager
-
-# Import utils from current package
-import utils
-from utils import (
-    extract_dates, extract_numbers, extract_currencies,
-    find_answer_span, normalize_text
-)
+from utils import find_answer_span
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class AtomicFact:
-    """Represents an atomic fact extracted from a chunk."""
+    """
+    Represents a semantic proposition extracted from a chunk.
+
+    A proposition is a complete, self-contained statement that can be questioned.
+    Examples:
+    - "Elastic N.V. acquired Build Security Ltd. in December 2021"
+    - "Q1 2024 total revenue was $400 million, representing 20% year-over-year growth"
+    """
     fact_id: str
     chunk_id: str
-    fact_type: str  # number, date, currency, triple, key_value
-    fact_text: str  # The fact content
-    answer_span: str  # Exact answer text
-    answer_start: int  # Char offset in chunk
-    answer_end: int  # Char offset end
-    entities: List[str]  # For multi-hop linking
+    fact_type: str  # factual_claim, temporal_event, or comparative_statement
+    fact_text: str  # Complete semantic proposition
+    answer_span: str  # Key piece that would answer a question
+    answer_start: int  # Character offset in chunk
+    answer_end: int  # Character offset end
+    entities: List[str]  # Semantic entities for multi-hop linking
     metadata: Dict[str, Any]  # Additional info
-    
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
+        """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
 
 class FactExtractor:
     """
-    Extracts atomic facts from chunks using regex + LLM.
-    
-    Facts include:
-    - Numbers, dates, currencies (regex)
-    - Subject-relation-object triples (LLM)
-    - Key-value pairs from tables (LLM)
+    Extracts semantic propositions from business documents using LLM.
+
+    Proposition types:
+    1. factual_claim: Complete statements about entities, metrics, or events
+    2. temporal_event: Events anchored to specific times
+    3. comparative_statement: Comparisons, changes, or trends over time
     """
-    
+
     def __init__(self, config, llm_manager: SecureAPIKeyManager):
         """
         Initialize fact extractor.
@@ -70,85 +75,64 @@ class FactExtractor:
         self.fact_counter = 0
         self._async_client = None
 
-        logger.info(f"Initialized FactExtractor with model: {config.model_name}")
-
-    def extract_facts_batch(self, chunks: List[Dict[str, Any]], concurrency: int = 5, progress_callback=None) -> List[List[AtomicFact]]:
-        """
-        Extract facts from multiple chunks in parallel (async).
-
-        Args:
-            chunks: List of chunk dictionaries
-            concurrency: Number of concurrent LLM calls
-            progress_callback: Optional callback to report progress (called with chunk count)
-
-        Returns:
-            List of fact lists (one per chunk)
-        """
-        # Create new event loop for this batch
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(self._extract_facts_batch_async(chunks, concurrency, progress_callback))
-            return result
-        finally:
-            # Clean up properly
-            loop.run_until_complete(self._cleanup_async_client())
-            loop.close()
-
-    async def _cleanup_async_client(self):
-        """Clean up async client."""
-        if self._async_client:
-            await self._async_client.close()
-            self._async_client = None
+        logger.info(f"Initialized FactExtractor (semantic propositions) with model: {config.model_name}")
 
     async def _get_async_client(self):
-        """Get or create async OpenAI client."""
+        """Get or create async OpenAI client (reused across requests)."""
         if self._async_client is None:
             import openai
             api_key = self.llm_manager.get_api_key()
             self._async_client = openai.AsyncOpenAI(api_key=api_key)
         return self._async_client
 
-    async def _extract_facts_batch_async(self, chunks: List[Dict[str, Any]], concurrency: int, progress_callback=None) -> List[List[AtomicFact]]:
-        """Async batch processing of chunks."""
-        semaphore = asyncio.Semaphore(concurrency)
-        completed_count = 0
+    def extract_facts_batch(
+        self,
+        chunks: List[Dict[str, Any]],
+        concurrency: int = 5,
+        progress_callback=None
+    ) -> List[List[AtomicFact]]:
+        """
+        Extract facts from multiple chunks in parallel using asyncio.
 
-        async def process_chunk(chunk):
-            nonlocal completed_count
+        Args:
+            chunks: List of chunk dictionaries
+            concurrency: Number of concurrent LLM calls
+            progress_callback: Optional callback(completed_count) for progress tracking
+
+        Returns:
+            List of fact lists (one per chunk), in same order as input chunks
+        """
+        return asyncio.run(self._extract_batch_async(chunks, concurrency, progress_callback))
+
+    async def _extract_batch_async(
+        self,
+        chunks: List[Dict[str, Any]],
+        concurrency: int,
+        progress_callback=None
+    ) -> List[List[AtomicFact]]:
+        """Async implementation of batch extraction with concurrency control."""
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def extract_with_semaphore(chunk):
             async with semaphore:
                 try:
                     result = await self._extract_facts_async(chunk)
-                    completed_count += 1
                     if progress_callback:
-                        progress_callback(completed_count)
+                        progress_callback(1)  # Report completion of one chunk
                     return result
                 except Exception as e:
-                    logger.warning(f"Error processing chunk {chunk.get('chunk_id', 'unknown')}: {e}")
-                    completed_count += 1
+                    logger.error(f"Error extracting facts from chunk {chunk.get('chunk_id', 'unknown')}: {e}")
                     if progress_callback:
-                        progress_callback(completed_count)
-                    return []
+                        progress_callback(1)
+                    return e  # Return exception to caller
 
-        tasks = [process_chunk(chunk) for chunk in chunks]
-        return await asyncio.gather(*tasks, return_exceptions=False)
+        tasks = [extract_with_semaphore(chunk) for chunk in chunks]
+        results = await asyncio.gather(*tasks, return_exceptions=False)
+        return results
 
     async def _extract_facts_async(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
-        """Async version of extract_facts using LLM-only extraction."""
-        chunk_id = chunk.get('chunk_id', '')
-        content = chunk.get('content', '')
-
-        if not content:
-            return []
-
-        # Single LLM call for all fact types (structured + semantic)
-        facts = await self._extract_all_facts_llm_async(chunk_id, content)
-        
-        return facts
-
-    def extract_facts(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
         """
-        Extract all atomic facts from a chunk using LLM-only extraction.
+        Async fact extraction from a single chunk.
 
         Args:
             chunk: Chunk dictionary with 'chunk_id' and 'content'
@@ -163,15 +147,39 @@ class FactExtractor:
             logger.warning(f"Empty content for chunk {chunk_id}")
             return []
 
-        logger.debug(f"Extracting facts from chunk {chunk_id}")
+        logger.debug(f"Extracting semantic propositions from chunk {chunk_id}")
 
-        # Single LLM call for all fact types (structured + semantic)
-        facts = self._extract_all_facts_llm(chunk_id, content)
+        # Single LLM call for all proposition types
+        facts = await self._extract_propositions_llm_async(chunk_id, content)
 
-        logger.debug(f"Extracted {len(facts)} facts from chunk {chunk_id}")
-
+        logger.debug(f"Extracted {len(facts)} propositions from chunk {chunk_id}")
         return facts
-    
+
+    def extract_facts(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
+        """
+        Synchronous fact extraction (for single-chunk use cases).
+
+        Args:
+            chunk: Chunk dictionary with 'chunk_id' and 'content'
+
+        Returns:
+            List of AtomicFact objects
+        """
+        chunk_id = chunk.get('chunk_id', '')
+        content = chunk.get('content', '')
+
+        if not content:
+            logger.warning(f"Empty content for chunk {chunk_id}")
+            return []
+
+        logger.debug(f"Extracting semantic propositions from chunk {chunk_id}")
+
+        # Single LLM call for all proposition types
+        facts = self._extract_propositions_llm_sync(chunk_id, content)
+
+        logger.debug(f"Extracted {len(facts)} propositions from chunk {chunk_id}")
+        return facts
+
     def _generate_fact_id(self, chunk_id: str) -> str:
         """Generate unique fact ID."""
         self.fact_counter += 1
@@ -179,26 +187,25 @@ class FactExtractor:
 
     def _is_valid_entity_set(self, entities: List[str], fact_text: str) -> bool:
         """
-        Check if entity set is semantically valid (not just bare numbers).
+        Validate entity set quality - rejects facts with only bare numbers.
 
         Args:
             entities: List of entity strings
             fact_text: The full fact text for context
 
         Returns:
-            True if entities are valid, False if too low quality
+            True if entities are semantically valid, False otherwise
         """
         if not entities:
             return False  # Must have at least one entity
 
-        # Check if ALL entities are just bare numbers (bad)
+        # Check if ALL entities are just bare numbers (indicates low quality)
         all_bare_numbers = True
         for entity in entities:
             entity_clean = entity.strip()
-            # Skip empty
             if not entity_clean:
                 continue
-            # Check if it's JUST a number (with optional punctuation/currency)
+            # Check if it's JUST a number (optionally with currency/percent symbols)
             if not re.match(r'^[$€£¥]?\s*[\d,\.]+\s*[%kmbt]?$', entity_clean, re.IGNORECASE):
                 all_bare_numbers = False
                 break
@@ -207,30 +214,24 @@ class FactExtractor:
             logger.debug(f"Skipping fact with bare number entities: {entities}")
             return False
 
-        # Check minimum fact_text length (must be meaningful)
+        # Require minimum fact_text length (meaningful propositions need context)
         if len(fact_text.split()) < 8:
-            logger.debug(f"Skipping fact with insufficient context: {fact_text}")
+            logger.debug(f"Skipping fact with insufficient context: {fact_text[:50]}...")
             return False
 
         return True
 
-    async def _extract_all_facts_llm_async(self, chunk_id: str, content: str) -> List[AtomicFact]:
+    def _build_extraction_prompt(self, content: str) -> str:
         """
-        Extract semantic propositions (self-contained claims) from business documents.
+        Build the LLM prompt for semantic proposition extraction.
 
         Args:
-            chunk_id: Chunk identifier
-            content: Chunk content
+            content: Chunk content to extract from
 
         Returns:
-            List of AtomicFact objects with semantic propositions
+            Formatted prompt string
         """
-        # Limit content length for LLM
-        max_content_len = 2000
-        if len(content) > max_content_len:
-            content = content[:max_content_len] + "..."
-
-        prompt = f"""Extract self-contained semantic propositions (claims) from this business document. Each proposition should be a complete, meaningful statement that can stand alone and be questioned.
+        return f"""Extract self-contained semantic propositions (claims) from this business document. Each proposition should be a complete, meaningful statement that can stand alone and be questioned.
 
 **Proposition Types:**
 
@@ -298,8 +299,107 @@ class FactExtractor:
 
 Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Output ONLY valid JSON."""
 
+    def _parse_and_validate_facts(
+        self,
+        response_text: str,
+        chunk_id: str,
+        content: str
+    ) -> List[AtomicFact]:
+        """
+        Parse LLM JSON response and validate/filter facts.
+
+        Args:
+            response_text: Raw LLM response
+            chunk_id: Chunk identifier
+            content: Original chunk content
+
+        Returns:
+            List of validated AtomicFact objects
+        """
+        # Clean JSON markers if present
+        if response_text.startswith("```"):
+            response_text = re.sub(r'```json?\n?', '', response_text)
+            response_text = re.sub(r'```\n?$', '', response_text)
+
+        facts_data = json.loads(response_text)
+
+        # Convert to AtomicFact objects with quality filtering
+        facts = []
+        seen_facts = set()  # Deduplication: (fact_text, answer_span)
+
+        for fact_data in facts_data:
+            fact_type = fact_data.get('fact_type', 'factual_claim')
+            answer_span = fact_data.get('answer_span', '')
+            fact_text = fact_data.get('fact_text', '')
+            entities = fact_data.get('entities', [])
+
+            # Skip if None or empty
+            if not answer_span or not fact_text:
+                continue
+
+            # Convert answer_span to string if needed
+            if isinstance(answer_span, (list, dict)):
+                answer_span = json.dumps(answer_span)
+            elif not isinstance(answer_span, str):
+                answer_span = str(answer_span)
+
+            # Quality filter: Check entity validity
+            if not self._is_valid_entity_set(entities, fact_text):
+                continue
+
+            # Deduplication
+            dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
+            if dedup_key in seen_facts:
+                continue
+            seen_facts.add(dedup_key)
+
+            # Find answer span location in content
+            start, end = find_answer_span(answer_span, content)
+
+            # Build metadata
+            metadata = {
+                "source": "llm",
+                "proposition_type": fact_type
+            }
+
+            fact = AtomicFact(
+                fact_id=self._generate_fact_id(chunk_id),
+                chunk_id=chunk_id,
+                fact_type=fact_type,
+                fact_text=fact_text,
+                answer_span=answer_span,
+                answer_start=start,
+                answer_end=end,
+                entities=entities,
+                metadata=metadata
+            )
+            facts.append(fact)
+
+        return facts
+
+    async def _extract_propositions_llm_async(
+        self,
+        chunk_id: str,
+        content: str
+    ) -> List[AtomicFact]:
+        """
+        Extract semantic propositions using LLM (async).
+
+        Args:
+            chunk_id: Chunk identifier
+            content: Chunk content
+
+        Returns:
+            List of AtomicFact objects
+        """
+        # Limit content length for LLM
+        max_content_len = 2000
+        if len(content) > max_content_len:
+            content = content[:max_content_len] + "..."
+
+        prompt = self._build_extraction_prompt(content)
+
         try:
-            # Use shared async client
             client = await self._get_async_client()
 
             llm_params = self.config.get_llm_params({
@@ -316,158 +416,37 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
 
             response_text = response.choices[0].message.content.strip()
 
-            # Parse JSON response
-            if response_text.startswith("```"):
-                response_text = re.sub(r'```json?\n?', '', response_text)
-                response_text = re.sub(r'```\n?$', '', response_text)
-
-            facts_data = json.loads(response_text)
-
-            # Convert to AtomicFact objects with quality filtering and deduplication
-            facts = []
-            seen_facts = set()  # Track (fact_text, answer_span) tuples to avoid duplicates
-
-            for fact_data in facts_data:
-                fact_type = fact_data.get('fact_type', 'factual_claim')
-                answer_span = fact_data.get('answer_span', '')
-                fact_text = fact_data.get('fact_text', '')
-                entities = fact_data.get('entities', [])
-
-                # Skip if None or empty
-                if answer_span is None or not fact_text:
-                    continue
-                # Convert to string if needed
-                if isinstance(answer_span, (list, dict)):
-                    answer_span = json.dumps(answer_span)
-                elif not isinstance(answer_span, str):
-                    answer_span = str(answer_span)
-                if not answer_span:  # Skip empty values
-                    continue
-
-                # Quality filter: Check entity validity
-                if not self._is_valid_entity_set(entities, fact_text):
-                    continue  # Skip low-quality facts
-
-                # Deduplication: create unique key based on fact text and answer
-                dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
-                if dedup_key in seen_facts:
-                    continue  # Skip duplicate fact
-                seen_facts.add(dedup_key)
-
-                start, end = find_answer_span(answer_span, content)
-
-                # Build metadata - simpler for semantic propositions
-                metadata = {
-                    "source": "llm",
-                    "proposition_type": fact_type
-                }
-
-                fact = AtomicFact(
-                    fact_id=self._generate_fact_id(chunk_id),
-                    chunk_id=chunk_id,
-                    fact_type=fact_type,
-                    fact_text=fact_text,
-                    answer_span=answer_span,
-                    answer_start=start,
-                    answer_end=end,
-                    entities=entities,
-                    metadata=metadata
-                )
-                facts.append(fact)
-
-            return facts
+            return self._parse_and_validate_facts(response_text, chunk_id, content)
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            logger.error(f"Failed to parse LLM response as JSON for chunk {chunk_id}: {e}")
             logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
             return []
         except Exception as e:
-            logger.error(f"Error extracting semantic facts with LLM: {e}")
+            logger.error(f"Error extracting propositions from chunk {chunk_id}: {e}")
             return []
 
-    def _extract_all_facts_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
+    def _extract_propositions_llm_sync(
+        self,
+        chunk_id: str,
+        content: str
+    ) -> List[AtomicFact]:
         """
-        Extract semantic propositions (self-contained claims) - synchronous version.
+        Extract semantic propositions using LLM (synchronous).
 
         Args:
             chunk_id: Chunk identifier
             content: Chunk content
 
         Returns:
-            List of AtomicFact objects with semantic propositions
+            List of AtomicFact objects
         """
         # Limit content length for LLM
         max_content_len = 2000
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
 
-        prompt = f"""Extract self-contained semantic propositions (claims) from this business document. Each proposition should be a complete, meaningful statement that can stand alone and be questioned.
-
-**Proposition Types:**
-
-1. **factual_claim**: Complete semantic statements about entities, metrics, or events
-   - "Elastic N.V. acquired Build Security Ltd. in Q1 2024"
-   - "The company's Q1 2024 revenue was $400 million"
-   - "EBITDA margin improved to 25% in Q1 2024"
-   - "More than 50% of Fortune 500 companies use Elastic"
-
-2. **temporal_event**: Events anchored to specific times
-   - "The fiscal quarter ended on January 31, 2024"
-   - "The Form 10-K was filed on March 15, 2024"
-   - "The acquisition closed in Q1 2024"
-
-3. **comparative_statement**: Comparisons, changes, or trends over time
-   - "Deferred revenue increased 24% year-over-year"
-   - "Employee count grew from 1,200 to 1,500 in FY2024"
-   - "Revenue growth accelerated compared to prior quarter"
-
-**CRITICAL RULES:**
-- Extract ONLY facts explicitly stated in the text
-- Each fact MUST be a complete, self-contained statement with full context
-- Do NOT extract: HTML tags, CSS classes, JavaScript code, technical IDs, colspan/rowspan, isolated numbers without context
-- Focus on business substance: financial metrics, corporate events, strategic initiatives, market position
-- Entities MUST be semantic (company names, product names, metric names, time periods) - NOT bare numbers
-- Extract 5-10 propositions depending on content richness
-- If content is primarily HTML/CSS/code, return EMPTY array []
-
-**Text to analyze:**
-{content}
-
-**Output format (JSON array):**
-[
-  {{
-    "fact_type": "factual_claim",
-    "fact_text": "Elastic N.V. acquired Build Security Ltd. in December 2021",
-    "answer_span": "Build Security Ltd.",
-    "entities": ["Elastic N.V.", "Build Security Ltd.", "December 2021", "acquisition"]
-  }},
-  {{
-    "fact_type": "factual_claim",
-    "fact_text": "Q1 2024 total revenue was $400 million, representing 20% year-over-year growth",
-    "answer_span": "$400 million",
-    "entities": ["Q1 2024", "total revenue", "$400 million", "20% growth"]
-  }},
-  {{
-    "fact_type": "temporal_event",
-    "fact_text": "The fiscal quarter ended on January 31, 2024",
-    "answer_span": "January 31, 2024",
-    "entities": ["fiscal quarter", "January 31, 2024"]
-  }},
-  {{
-    "fact_type": "comparative_statement",
-    "fact_text": "Deferred revenue increased 24% year-over-year to $536 million",
-    "answer_span": "24%",
-    "entities": ["deferred revenue", "24% increase", "year-over-year", "$536 million"]
-  }}
-]
-
-**Required for each fact:**
-- fact_type: "factual_claim", "temporal_event", or "comparative_statement"
-- fact_text: Full semantic proposition with complete context (minimum 10 words)
-- answer_span: The key piece of information that would answer a question (verbatim from text)
-- entities: Semantic entities - company names, products, metrics, time periods (NOT bare numbers like "200" or "4.2")
-
-Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Output ONLY valid JSON."""
+        prompt = self._build_extraction_prompt(content)
 
         try:
             api_key = self.llm_manager.get_api_key()
@@ -482,308 +461,16 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
                     {"role": "user", "content": prompt}
                 ]
             })
-            response = client.chat.completions.create(**llm_params)
 
+            response = client.chat.completions.create(**llm_params)
             response_text = response.choices[0].message.content.strip()
 
-            # Parse JSON response
-            if response_text.startswith("```"):
-                response_text = re.sub(r'```json?\n?', '', response_text)
-                response_text = re.sub(r'```\n?$', '', response_text)
-
-            facts_data = json.loads(response_text)
-
-            # Convert to AtomicFact objects with quality filtering and deduplication
-            facts = []
-            seen_facts = set()  # Track (fact_text, answer_span) tuples to avoid duplicates
-
-            for fact_data in facts_data:
-                fact_type = fact_data.get('fact_type', 'factual_claim')
-                answer_span = fact_data.get('answer_span', '')
-                fact_text = fact_data.get('fact_text', '')
-                entities = fact_data.get('entities', [])
-
-                # Skip if None or empty
-                if answer_span is None or not fact_text:
-                    continue
-                # Convert to string if needed
-                if isinstance(answer_span, (list, dict)):
-                    answer_span = json.dumps(answer_span)
-                elif not isinstance(answer_span, str):
-                    answer_span = str(answer_span)
-                if not answer_span:  # Skip empty values
-                    continue
-
-                # Quality filter: Check entity validity
-                if not self._is_valid_entity_set(entities, fact_text):
-                    continue  # Skip low-quality facts
-
-                # Deduplication: create unique key based on fact text and answer
-                dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
-                if dedup_key in seen_facts:
-                    continue  # Skip duplicate fact
-                seen_facts.add(dedup_key)
-
-                start, end = find_answer_span(answer_span, content)
-
-                # Build metadata - simpler for semantic propositions
-                metadata = {
-                    "source": "llm",
-                    "proposition_type": fact_type
-                }
-
-                fact = AtomicFact(
-                    fact_id=self._generate_fact_id(chunk_id),
-                    chunk_id=chunk_id,
-                    fact_type=fact_type,
-                    fact_text=fact_text,
-                    answer_span=answer_span,
-                    answer_start=start,
-                    answer_end=end,
-                    entities=entities,
-                    metadata=metadata
-                )
-                facts.append(fact)
-
-            return facts
+            return self._parse_and_validate_facts(response_text, chunk_id, content)
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            logger.error(f"Failed to parse LLM response as JSON for chunk {chunk_id}: {e}")
             logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
             return []
         except Exception as e:
-            logger.error(f"Error extracting semantic facts with LLM: {e}", exc_info=True)
+            logger.error(f"Error extracting propositions from chunk {chunk_id}: {e}", exc_info=True)
             return []
-
-    def _extract_triples_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """
-        Extract (subject, relation, object) triples using LLM.
-        
-        Args:
-            chunk_id: Chunk identifier
-            content: Chunk content
-            
-        Returns:
-            List of AtomicFact objects for triples
-        """
-        # Limit content length for LLM
-        max_content_len = 2000
-        if len(content) > max_content_len:
-            content = content[:max_content_len] + "..."
-        
-        prompt = f"""Extract atomic facts as (subject, relation, object) triples from this text. Focus on concrete, factual statements.
-
-Text: {content}
-
-For each fact, provide:
-1. The triple as [subject, relation, object]
-2. The exact answer span (the object/value)
-3. Key entities mentioned
-
-Output JSON format (array of facts):
-[
-  {{
-    "triple": ["Elastic N.V.", "fiscal_year_revenue", "$1.2B"],
-    "answer_span": "$1.2B",
-    "entities": ["Elastic N.V.", "fiscal_year", "2024"],
-    "fact_text": "Elastic N.V. reported fiscal year revenue of $1.2B"
-  }}
-]
-
-Extract 3-5 key facts. Output ONLY valid JSON, no other text."""
-        
-        try:
-            api_key = self.llm_manager.get_api_key()
-            
-            # Call OpenAI API
-            import openai
-            client = openai.OpenAI(api_key=api_key)
-            
-            llm_params = self.config.get_llm_params({
-                "model": self.config.model_name,
-                "messages": [
-                    {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            })
-            response = client.chat.completions.create(**llm_params)
-            
-            response_text = response.choices[0].message.content.strip()
-            
-            # Parse JSON response
-            # Remove markdown code blocks if present
-            if response_text.startswith("```"):
-                response_text = re.sub(r'```json?\n?', '', response_text)
-                response_text = re.sub(r'```\n?$', '', response_text)
-            
-            triples_data = json.loads(response_text)
-            
-            # Convert to AtomicFact objects
-            facts = []
-            for triple_data in triples_data:
-                answer_span = triple_data.get('answer_span', '')
-                # Skip if None or empty
-                if answer_span is None:
-                    continue
-                # Convert to string if needed
-                if isinstance(answer_span, (list, dict)):
-                    answer_span = json.dumps(answer_span)
-                elif not isinstance(answer_span, str):
-                    answer_span = str(answer_span)
-                if not answer_span:  # Skip empty values
-                    continue
-                start, end = find_answer_span(answer_span, content)
-                
-                fact = AtomicFact(
-                    fact_id=self._generate_fact_id(chunk_id),
-                    chunk_id=chunk_id,
-                    fact_type="triple",
-                    fact_text=triple_data.get('fact_text', ''),
-                    answer_span=answer_span,
-                    answer_start=start,
-                    answer_end=end,
-                    entities=triple_data.get('entities', []),
-                    metadata={
-                        "triple": triple_data.get('triple', []),
-                        "source": "llm"
-                    }
-                )
-                facts.append(fact)
-            
-            return facts
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
-            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
-            return []
-        except Exception as e:
-            logger.error(f"Error extracting triples with LLM: {e}", exc_info=True)
-            return []
-    
-    def _extract_key_values_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """
-        Extract key-value pairs (especially from tables) using LLM.
-        
-        Args:
-            chunk_id: Chunk identifier
-            content: Chunk content
-            
-        Returns:
-            List of AtomicFact objects for key-value pairs
-        """
-        # Only process if chunk looks like it has structured data
-        if not self._has_structured_data(content):
-            return []
-        
-        # Limit content length
-        max_content_len = 2000
-        if len(content) > max_content_len:
-            content = content[:max_content_len] + "..."
-        
-        prompt = f"""Extract key-value pairs from this text, especially from tables or structured data.
-
-Text: {content}
-
-For each key-value pair, provide:
-1. The key (metric/field name)
-2. The value
-3. Any associated entities (e.g., year, product)
-
-Output JSON format (array of key-value facts):
-[
-  {{
-    "key": "EBITDA",
-    "value": "$400M",
-    "entities": ["2024", "Q1"],
-    "fact_text": "Q1 2024 EBITDA was $400M"
-  }}
-]
-
-Extract 3-5 key pairs. Output ONLY valid JSON, no other text."""
-        
-        try:
-            api_key = self.llm_manager.get_api_key()
-            
-            import openai
-            client = openai.OpenAI(api_key=api_key)
-            
-            llm_params = self.config.get_llm_params({
-                "model": self.config.model_name,
-                "messages": [
-                    {"role": "system", "content": "You are a data extraction assistant. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            })
-            response = client.chat.completions.create(**llm_params)
-            
-            response_text = response.choices[0].message.content.strip()
-            
-            # Parse JSON
-            if response_text.startswith("```"):
-                response_text = re.sub(r'```json?\n?', '', response_text)
-                response_text = re.sub(r'```\n?$', '', response_text)
-            
-            kv_data = json.loads(response_text)
-            
-            # Convert to AtomicFact objects
-            facts = []
-            for kv in kv_data:
-                value = kv.get('value', '')
-                # Skip if value is None or empty
-                if value is None:
-                    continue
-                # Convert value to string if it's not already
-                if isinstance(value, (list, dict)):
-                    value = json.dumps(value)
-                elif not isinstance(value, str):
-                    value = str(value)
-                if not value:  # Skip empty values
-                    continue
-                start, end = find_answer_span(value, content)
-                
-                fact = AtomicFact(
-                    fact_id=self._generate_fact_id(chunk_id),
-                    chunk_id=chunk_id,
-                    fact_type="key_value",
-                    fact_text=kv.get('fact_text', ''),
-                    answer_span=value,
-                    answer_start=start,
-                    answer_end=end,
-                    entities=kv.get('entities', []),
-                    metadata={
-                        "key": kv.get('key', ''),
-                        "value": value,
-                        "source": "llm"
-                    }
-                )
-                facts.append(fact)
-            
-            return facts
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
-            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
-            return []
-        except Exception as e:
-            logger.error(f"Error extracting key-values with LLM: {e}")
-            return []
-    
-    def _has_structured_data(self, content: str) -> bool:
-        """Check if content likely has structured data (tables, lists)."""
-        # Look for table markers
-        table_indicators = ['|', '---', 'Table', 'Row', 'Column']
-        
-        for indicator in table_indicators:
-            if indicator in content:
-                return True
-        
-        # Look for repeated patterns (lists, etc.)
-        lines = content.split('\n')
-        if len(lines) > 5:
-            # Check for bullet points or numbered lists
-            bullet_count = sum(1 for line in lines if line.strip().startswith(('-', '*', '•', '1.', '2.')))
-            if bullet_count > 3:
-                return True
-        
-        return False
-
