@@ -57,11 +57,11 @@ Examples:
   # Run full pipeline
   python -m evals.synthetic-eval.main
 
-  # Skip sampling and fact extraction, use existing facts
-  python -m evals.synthetic-eval.main --skip-sampling --skip-facts --input-facts output/intermediate_facts.jsonl
+  # Run with custom query targets
+  python -m evals.synthetic-eval.main --target-questions 400 --multi-hop-ratio 0.25
 
-  # Only regenerate queries from existing facts
-  python -m evals.synthetic-eval.main --only-queries --input-facts output/intermediate_facts.jsonl
+  # Only regenerate queries from existing facts with new targets
+  python -m evals.synthetic-eval.main --only-queries --input-facts output/intermediate_facts.jsonl --target-questions 400 --multi-hop-ratio 0.25
 
   # Only redo silver labeling from existing queries
   python -m evals.synthetic-eval.main --only-labeling --input-queries output/intermediate_queries.jsonl
@@ -90,6 +90,12 @@ Examples:
     parser.add_argument('--only-labeling', action='store_true',
                         help='Only run silver labeling (implies --skip-sampling --skip-facts --skip-queries)')
 
+    # Config overrides
+    parser.add_argument('--target-questions', type=int,
+                        help='Override target_questions from config (e.g., 400)')
+    parser.add_argument('--multi-hop-ratio', type=float,
+                        help='Override multi_hop_ratio from config (e.g., 0.25 for 25%%)')
+
     args = parser.parse_args()
 
     # Handle "only" shortcuts
@@ -106,6 +112,8 @@ Examples:
         parser.error('--skip-facts requires --input-facts')
     if args.skip_queries and not args.input_queries:
         parser.error('--skip-queries requires --input-queries')
+    if args.multi_hop_ratio is not None and not (0.0 <= args.multi_hop_ratio <= 1.0):
+        parser.error('--multi-hop-ratio must be between 0.0 and 1.0')
 
     return args
 
@@ -176,9 +184,19 @@ def main():
     # 1. Load configuration
     logger.info("\n[1/6] Loading configuration...")
     config = SyntheticEvalConfig()
+
+    # Apply CLI overrides
+    if args.target_questions is not None:
+        logger.info(f"  Overriding target_questions: {config.target_questions} -> {args.target_questions}")
+        config.target_questions = args.target_questions
+    if args.multi_hop_ratio is not None:
+        logger.info(f"  Overriding multi_hop_ratio: {config.multi_hop_ratio} -> {args.multi_hop_ratio}")
+        config.multi_hop_ratio = args.multi_hop_ratio
+
     logger.info(f"  Model: {config.model_name}")
     logger.info(f"  Collection: {config.collection_name}")
     logger.info(f"  Target questions: {config.target_questions}")
+    logger.info(f"  Multi-hop ratio: {config.multi_hop_ratio}")
     logger.info(f"  Target sample size: {config.target_sample_size}")
 
     # Show pipeline plan
