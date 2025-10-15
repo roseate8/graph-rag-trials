@@ -8,7 +8,7 @@ class SecureAPIKeyManager:
     """Secure temporary API key storage for session use only."""
     
     # Class constants for better performance
-    SESSION_TIMEOUT_MINUTES = 30
+    SESSION_TIMEOUT_MINUTES = 300
     VALID_KEY_PREFIXES = frozenset(['sk-', 'sk-proj-'])
     
     def __init__(self):

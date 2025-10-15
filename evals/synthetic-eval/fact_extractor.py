@@ -6,6 +6,7 @@ import sys
 import json
 import logging
 import re
+import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
@@ -59,7 +60,7 @@ class FactExtractor:
     def __init__(self, config, llm_manager: SecureAPIKeyManager):
         """
         Initialize fact extractor.
-        
+
         Args:
             config: SyntheticEvalConfig instance
             llm_manager: SecureAPIKeyManager for LLM calls
@@ -67,41 +68,123 @@ class FactExtractor:
         self.config = config
         self.llm_manager = llm_manager
         self.fact_counter = 0
-        
+        self._async_client = None
+
         logger.info(f"Initialized FactExtractor with model: {config.model_name}")
-    
+
+    def extract_facts_batch(self, chunks: List[Dict[str, Any]], concurrency: int = 5, progress_callback=None) -> List[List[AtomicFact]]:
+        """
+        Extract facts from multiple chunks in parallel (async).
+
+        Args:
+            chunks: List of chunk dictionaries
+            concurrency: Number of concurrent LLM calls
+            progress_callback: Optional callback to report progress (called with chunk count)
+
+        Returns:
+            List of fact lists (one per chunk)
+        """
+        # Create new event loop for this batch
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(self._extract_facts_batch_async(chunks, concurrency, progress_callback))
+            return result
+        finally:
+            # Clean up properly
+            loop.run_until_complete(self._cleanup_async_client())
+            loop.close()
+
+    async def _cleanup_async_client(self):
+        """Clean up async client."""
+        if self._async_client:
+            await self._async_client.close()
+            self._async_client = None
+
+    async def _get_async_client(self):
+        """Get or create async OpenAI client."""
+        if self._async_client is None:
+            import openai
+            api_key = self.llm_manager.get_api_key()
+            self._async_client = openai.AsyncOpenAI(api_key=api_key)
+        return self._async_client
+
+    async def _extract_facts_batch_async(self, chunks: List[Dict[str, Any]], concurrency: int, progress_callback=None) -> List[List[AtomicFact]]:
+        """Async batch processing of chunks."""
+        semaphore = asyncio.Semaphore(concurrency)
+        completed_count = 0
+
+        async def process_chunk(chunk):
+            nonlocal completed_count
+            async with semaphore:
+                try:
+                    result = await self._extract_facts_async(chunk)
+                    completed_count += 1
+                    if progress_callback:
+                        progress_callback(completed_count)
+                    return result
+                except Exception as e:
+                    logger.warning(f"Error processing chunk {chunk.get('chunk_id', 'unknown')}: {e}")
+                    completed_count += 1
+                    if progress_callback:
+                        progress_callback(completed_count)
+                    return []
+
+        tasks = [process_chunk(chunk) for chunk in chunks]
+        return await asyncio.gather(*tasks, return_exceptions=False)
+
+    async def _extract_facts_async(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
+        """Async version of extract_facts."""
+        chunk_id = chunk.get('chunk_id', '')
+        content = chunk.get('content', '')
+
+        if not content:
+            return []
+
+        facts = []
+
+        # 1. Extract structured data with regex (synchronous)
+        facts.extend(self._extract_date_facts(chunk_id, content))
+        facts.extend(self._extract_number_facts(chunk_id, content))
+        facts.extend(self._extract_currency_facts(chunk_id, content))
+
+        # 2. Extract semantic facts with async LLM call
+        semantic_facts = await self._extract_semantic_facts_llm_async(chunk_id, content)
+        facts.extend(semantic_facts)
+
+        return facts
+
     def extract_facts(self, chunk: Dict[str, Any]) -> List[AtomicFact]:
         """
         Extract all atomic facts from a chunk.
-        
+
         Args:
             chunk: Chunk dictionary with 'chunk_id' and 'content'
-            
+
         Returns:
             List of AtomicFact objects
         """
         chunk_id = chunk.get('chunk_id', '')
         content = chunk.get('content', '')
-        
+
         if not content:
             logger.warning(f"Empty content for chunk {chunk_id}")
             return []
-        
+
         logger.debug(f"Extracting facts from chunk {chunk_id}")
-        
+
         facts = []
-        
+
         # 1. Extract structured data with regex
         facts.extend(self._extract_date_facts(chunk_id, content))
         facts.extend(self._extract_number_facts(chunk_id, content))
         facts.extend(self._extract_currency_facts(chunk_id, content))
-        
-        # 2. Extract semantic facts with LLM
-        facts.extend(self._extract_triples_llm(chunk_id, content))
-        facts.extend(self._extract_key_values_llm(chunk_id, content))
-        
+
+        # 2. Extract semantic facts with unified LLM call (optimized)
+        facts.extend(self._extract_semantic_facts_llm(chunk_id, content))
+
         logger.debug(f"Extracted {len(facts)} facts from chunk {chunk_id}")
-        
+
         return facts
     
     def _generate_fact_id(self, chunk_id: str) -> str:
@@ -225,6 +308,267 @@ class FactExtractor:
         
         return True
     
+    async def _extract_semantic_facts_llm_async(self, chunk_id: str, content: str) -> List[AtomicFact]:
+        """
+        Async version: Extract both triples and key-value pairs in a single unified LLM call.
+
+        Args:
+            chunk_id: Chunk identifier
+            content: Chunk content
+
+        Returns:
+            List of AtomicFact objects for both triples and key-values
+        """
+        # Limit content length for LLM
+        max_content_len = 2000
+        if len(content) > max_content_len:
+            content = content[:max_content_len] + "..."
+
+        prompt = f"""Extract atomic facts from this text. Identify BOTH:
+1. Subject-Relation-Object triples (factual statements)
+2. Key-Value pairs (metrics, attributes from tables/structured data)
+
+Text: {content}
+
+For each fact, provide:
+- fact_type: "triple" or "key_value"
+- For triples: subject, relation, object
+- For key-values: key, value
+- answer_span: the exact text to extract
+- entities: key entities mentioned
+- fact_text: natural language description
+
+Output JSON format (array combining both types):
+[
+  {{
+    "fact_type": "triple",
+    "triple": ["Elastic N.V.", "fiscal_year_revenue", "$1.2B"],
+    "answer_span": "$1.2B",
+    "entities": ["Elastic N.V.", "2024"],
+    "fact_text": "Elastic N.V. reported fiscal year revenue of $1.2B"
+  }},
+  {{
+    "fact_type": "key_value",
+    "key": "EBITDA",
+    "value": "$400M",
+    "answer_span": "$400M",
+    "entities": ["2024", "Q1"],
+    "fact_text": "Q1 2024 EBITDA was $400M"
+  }}
+]
+
+Extract 5-8 key facts total. Output ONLY valid JSON, no other text."""
+
+        try:
+            # Use shared async client
+            client = await self._get_async_client()
+
+            llm_params = self.config.get_llm_params({
+                "model": self.config.model_name,
+                "messages": [
+                    {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ]
+            })
+
+            logger.debug(f"Calling LLM for chunk {chunk_id}...")
+            response = await client.chat.completions.create(**llm_params)
+            logger.debug(f"LLM response received for chunk {chunk_id}")
+
+            response_text = response.choices[0].message.content.strip()
+
+            # Parse JSON response
+            if response_text.startswith("```"):
+                response_text = re.sub(r'```json?\n?', '', response_text)
+                response_text = re.sub(r'```\n?$', '', response_text)
+
+            facts_data = json.loads(response_text)
+
+            # Convert to AtomicFact objects
+            facts = []
+            for fact_data in facts_data:
+                fact_type = fact_data.get('fact_type', 'triple')
+                answer_span = fact_data.get('answer_span', '')
+
+                # Skip if None or empty
+                if answer_span is None:
+                    continue
+                # Convert to string if needed
+                if isinstance(answer_span, (list, dict)):
+                    answer_span = json.dumps(answer_span)
+                elif not isinstance(answer_span, str):
+                    answer_span = str(answer_span)
+                if not answer_span:  # Skip empty values
+                    continue
+
+                start, end = find_answer_span(answer_span, content)
+
+                # Build metadata based on fact type
+                if fact_type == "key_value":
+                    metadata = {
+                        "key": fact_data.get('key', ''),
+                        "value": fact_data.get('value', ''),
+                        "source": "llm"
+                    }
+                else:  # triple
+                    metadata = {
+                        "triple": fact_data.get('triple', []),
+                        "source": "llm"
+                    }
+
+                fact = AtomicFact(
+                    fact_id=self._generate_fact_id(chunk_id),
+                    chunk_id=chunk_id,
+                    fact_type=fact_type,
+                    fact_text=fact_data.get('fact_text', ''),
+                    answer_span=answer_span,
+                    answer_start=start,
+                    answer_end=end,
+                    entities=fact_data.get('entities', []),
+                    metadata=metadata
+                )
+                facts.append(fact)
+
+            return facts
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
+            return []
+        except Exception as e:
+            logger.error(f"Error extracting semantic facts with LLM: {e}")
+            return []
+
+    def _extract_semantic_facts_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
+        """
+        Extract both triples and key-value pairs in a single unified LLM call (optimized).
+
+        Args:
+            chunk_id: Chunk identifier
+            content: Chunk content
+
+        Returns:
+            List of AtomicFact objects for both triples and key-values
+        """
+        # Limit content length for LLM
+        max_content_len = 2000
+        if len(content) > max_content_len:
+            content = content[:max_content_len] + "..."
+
+        prompt = f"""Extract atomic facts from this text. Identify BOTH:
+1. Subject-Relation-Object triples (factual statements)
+2. Key-Value pairs (metrics, attributes from tables/structured data)
+
+Text: {content}
+
+For each fact, provide:
+- fact_type: "triple" or "key_value"
+- For triples: subject, relation, object
+- For key-values: key, value
+- answer_span: the exact text to extract
+- entities: key entities mentioned
+- fact_text: natural language description
+
+Output JSON format (array combining both types):
+[
+  {{
+    "fact_type": "triple",
+    "triple": ["Elastic N.V.", "fiscal_year_revenue", "$1.2B"],
+    "answer_span": "$1.2B",
+    "entities": ["Elastic N.V.", "2024"],
+    "fact_text": "Elastic N.V. reported fiscal year revenue of $1.2B"
+  }},
+  {{
+    "fact_type": "key_value",
+    "key": "EBITDA",
+    "value": "$400M",
+    "answer_span": "$400M",
+    "entities": ["2024", "Q1"],
+    "fact_text": "Q1 2024 EBITDA was $400M"
+  }}
+]
+
+Extract 5-8 key facts total. Output ONLY valid JSON, no other text."""
+
+        try:
+            api_key = self.llm_manager.get_api_key()
+
+            import openai
+            client = openai.OpenAI(api_key=api_key)
+
+            llm_params = self.config.get_llm_params({
+                "model": self.config.model_name,
+                "messages": [
+                    {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ]
+            })
+            response = client.chat.completions.create(**llm_params)
+
+            response_text = response.choices[0].message.content.strip()
+
+            # Parse JSON response
+            if response_text.startswith("```"):
+                response_text = re.sub(r'```json?\n?', '', response_text)
+                response_text = re.sub(r'```\n?$', '', response_text)
+
+            facts_data = json.loads(response_text)
+
+            # Convert to AtomicFact objects
+            facts = []
+            for fact_data in facts_data:
+                fact_type = fact_data.get('fact_type', 'triple')
+                answer_span = fact_data.get('answer_span', '')
+
+                # Skip if None or empty
+                if answer_span is None:
+                    continue
+                # Convert to string if needed
+                if isinstance(answer_span, (list, dict)):
+                    answer_span = json.dumps(answer_span)
+                elif not isinstance(answer_span, str):
+                    answer_span = str(answer_span)
+                if not answer_span:  # Skip empty values
+                    continue
+
+                start, end = find_answer_span(answer_span, content)
+
+                # Build metadata based on fact type
+                if fact_type == "key_value":
+                    metadata = {
+                        "key": fact_data.get('key', ''),
+                        "value": fact_data.get('value', ''),
+                        "source": "llm"
+                    }
+                else:  # triple
+                    metadata = {
+                        "triple": fact_data.get('triple', []),
+                        "source": "llm"
+                    }
+
+                fact = AtomicFact(
+                    fact_id=self._generate_fact_id(chunk_id),
+                    chunk_id=chunk_id,
+                    fact_type=fact_type,
+                    fact_text=fact_data.get('fact_text', ''),
+                    answer_span=answer_span,
+                    answer_start=start,
+                    answer_end=end,
+                    entities=fact_data.get('entities', []),
+                    metadata=metadata
+                )
+                facts.append(fact)
+
+            return facts
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
+            return []
+        except Exception as e:
+            logger.error(f"Error extracting semantic facts with LLM: {e}", exc_info=True)
+            return []
+
     def _extract_triples_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
         """
         Extract (subject, relation, object) triples using LLM.

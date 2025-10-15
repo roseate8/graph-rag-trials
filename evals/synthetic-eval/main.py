@@ -105,17 +105,45 @@ def main():
         all_facts = []
         fact_types = defaultdict(int)
 
-        # Process chunks with progress bar
-        logger.info(f"  Processing {len(sampled_chunks)} chunks...")
-        pbar = tqdm(sampled_chunks, desc="Extracting facts", unit="chunk", ncols=100)
-        for chunk in pbar:
-            try:
-                facts = extractor.extract_facts(chunk)
-                all_facts.extend(facts)
+        # Process chunks with parallel async processing and progress bar
+        logger.info(f"  Processing {len(sampled_chunks)} chunks in parallel (concurrency=5)...")
+        logger.info(f"  Progress: Processing in batches of 20, 5 concurrent LLM calls")
 
-                # Count fact types
-                for fact in facts:
-                    fact_types[fact.fact_type] += 1
+        # Create progress bar for individual chunks
+        pbar = tqdm(total=len(sampled_chunks), desc="Extracting facts", unit="chunk", ncols=100)
+
+        # Process in batches
+        batch_size = 20  # Process 20 chunks at a time
+        total_batches = (len(sampled_chunks) + batch_size - 1) // batch_size
+        chunks_processed = 0
+
+        for batch_idx in range(0, len(sampled_chunks), batch_size):
+            batch = sampled_chunks[batch_idx:batch_idx + batch_size]
+            batch_num = batch_idx // batch_size + 1
+
+            try:
+                # Progress callback to update progress bar as chunks complete
+                def progress_callback(completed_in_batch):
+                    pbar.update(1)
+                    pbar.set_postfix({"facts": len(all_facts), "batch": f"{batch_num}/{total_batches}"})
+
+                # Extract facts from batch in parallel
+                logger.debug(f"Processing batch {batch_num}/{total_batches} ({len(batch)} chunks)...")
+                batch_results = extractor.extract_facts_batch(batch, concurrency=5, progress_callback=progress_callback)
+                logger.debug(f"Batch {batch_num}/{total_batches} completed")
+
+                # Process results
+                for idx, facts in enumerate(batch_results):
+                    if isinstance(facts, Exception):
+                        logger.warning(f"  Exception in chunk {batch[idx].get('chunk_id', 'unknown')}: {facts}")
+                        continue  # Skip failed chunks
+                    if isinstance(facts, list):
+                        all_facts.extend(facts)
+                        # Count fact types
+                        for fact in facts:
+                            fact_types[fact.fact_type] += 1
+
+                chunks_processed += len(batch)
 
                 # Limit total facts to prevent memory issues
                 if len(all_facts) >= config.max_facts_per_chunk * len(sampled_chunks):
@@ -123,8 +151,11 @@ def main():
                     break
 
             except Exception as e:
-                pbar.write(f"  Error processing chunk {chunk.get('chunk_id', 'unknown')}: {e}")
+                logger.error(f"  Error processing batch {batch_num}: {e}", exc_info=True)
+                # Still update progress bar for failed batch
+                pbar.update(len(batch))
                 continue
+
         pbar.close()
         
         logger.info(f"  Extracted {len(all_facts)} total facts")
