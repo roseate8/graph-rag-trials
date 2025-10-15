@@ -491,14 +491,17 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
 
             facts_data = json.loads(response_text)
 
-            # Convert to AtomicFact objects
+            # Convert to AtomicFact objects with deduplication
             facts = []
+            seen_facts = set()  # Track (fact_text, answer_span) tuples to avoid duplicates
+            
             for fact_data in facts_data:
                 fact_type = fact_data.get('fact_type', 'triple')
                 answer_span = fact_data.get('answer_span', '')
+                fact_text = fact_data.get('fact_text', '')
 
                 # Skip if None or empty
-                if answer_span is None:
+                if answer_span is None or not fact_text:
                     continue
                 # Convert to string if needed
                 if isinstance(answer_span, (list, dict)):
@@ -507,6 +510,12 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
                     answer_span = str(answer_span)
                 if not answer_span:  # Skip empty values
                     continue
+                
+                # Deduplication: create unique key based on fact text and answer
+                dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
+                if dedup_key in seen_facts:
+                    continue  # Skip duplicate fact
+                seen_facts.add(dedup_key)
 
                 start, end = find_answer_span(answer_span, content)
 
@@ -527,7 +536,7 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
                     fact_id=self._generate_fact_id(chunk_id),
                     chunk_id=chunk_id,
                     fact_type=fact_type,
-                    fact_text=fact_data.get('fact_text', ''),
+                    fact_text=fact_text,
                     answer_span=answer_span,
                     answer_start=start,
                     answer_end=end,
@@ -628,14 +637,17 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
 
             facts_data = json.loads(response_text)
 
-            # Convert to AtomicFact objects
+            # Convert to AtomicFact objects with deduplication
             facts = []
+            seen_facts = set()  # Track (fact_text, answer_span) tuples to avoid duplicates
+            
             for fact_data in facts_data:
                 fact_type = fact_data.get('fact_type', 'triple')
                 answer_span = fact_data.get('answer_span', '')
+                fact_text = fact_data.get('fact_text', '')
 
                 # Skip if None or empty
-                if answer_span is None:
+                if answer_span is None or not fact_text:
                     continue
                 # Convert to string if needed
                 if isinstance(answer_span, (list, dict)):
@@ -644,6 +656,12 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
                     answer_span = str(answer_span)
                 if not answer_span:  # Skip empty values
                     continue
+                
+                # Deduplication: create unique key based on fact text and answer
+                dedup_key = (fact_text.lower().strip(), answer_span.lower().strip())
+                if dedup_key in seen_facts:
+                    continue  # Skip duplicate fact
+                seen_facts.add(dedup_key)
 
                 start, end = find_answer_span(answer_span, content)
 
@@ -664,7 +682,7 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
                     fact_id=self._generate_fact_id(chunk_id),
                     chunk_id=chunk_id,
                     fact_type=fact_type,
-                    fact_text=fact_data.get('fact_text', ''),
+                    fact_text=fact_text,
                     answer_span=answer_span,
                     answer_start=start,
                     answer_end=end,
