@@ -31,20 +31,32 @@ def normalize_text(text: str) -> str:
     """
     Normalize text for comparison with caching.
     
+    Preserves important semantic markers while normalizing:
+    - Keeps alphanumeric and spaces
+    - Preserves word boundaries
+    - Removes excessive punctuation but keeps hyphens in compound words
+    
     Args:
         text: Input text
         
     Returns:
-        Normalized text (lowercase, no punctuation, stripped)
+        Normalized text (lowercase, minimal punctuation, stripped)
     """
     if not text:
         return ""
     
-    # Lowercase and remove punctuation in one pass
-    text = text.lower().translate(str.maketrans('', '', string.punctuation))
+    # Lowercase
+    text = text.lower()
     
-    # Normalize whitespace
-    return ' '.join(text.split())
+    # Preserve hyphens in compound words (e.g., "Build Security Ltd." vs "non-GAAP")
+    # but remove most other punctuation
+    # Keep: alphanumeric, spaces, hyphens
+    text = re.sub(r'[^\w\s-]', ' ', text)
+    
+    # Normalize whitespace (collapse multiple spaces)
+    text = ' '.join(text.split())
+    
+    return text.strip()
 
 
 def normalize_number(num_str: str) -> float:

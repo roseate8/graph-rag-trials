@@ -12,8 +12,8 @@ class SyntheticEvalConfig:
     
     # Sampling parameters
     total_chunks: int = 15000
-    target_sample_size: int = 100  # Reduced for faster testing
-    num_clusters: int = 10  # Reduced clusters for faster K-means
+    target_sample_size: int = 150  # Increased for more diverse linkable facts
+    num_clusters: int = 15  # Increased clusters for better stratification
     
     # Query generation parameters
     target_questions: int = 200  # Updated to generate more queries
@@ -41,7 +41,7 @@ class SyntheticEvalConfig:
     # Processing parameters
     batch_size: int = 5  # Smaller batches for memory efficiency
     enable_llm_judge: bool = False  # Disabled for faster processing
-    max_facts_per_chunk: int = 10  # Limit facts per chunk
+    max_facts_per_chunk: int = 15  # Maximum ceiling per chunk (not a target, won't force hallucination)
     
     # Output parameters
     output_dir: str = "output"  # Relative to synthetic-eval directory

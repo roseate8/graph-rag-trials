@@ -290,18 +290,39 @@ class FactExtractor:
         return facts
     
     def _is_significant_number(self, number_str: str) -> bool:
-        """Check if number is significant (not year, page number, etc.)."""
+        """
+        Check if number is significant (not year, page number, version, HTML artifact, etc.).
+        
+        Filters out:
+        - Years (1900-2100)
+        - Small integers < 100 (page numbers, counts, HTML indices)
+        - Version numbers (10.1, 10.10)
+        - HTML/CSS artifacts (0 b, colspan values)
+        - JavaScript code numbers
+        """
         # Remove formatting
         cleaned = re.sub(r'[,$€£¥\s]', '', number_str)
+        
+        # Filter out HTML/CSS artifacts like "0 b", "1 b"
+        if 'b' in number_str.lower() and len(cleaned) <= 3:
+            return False
         
         # Filter out years (4-digit numbers between 1900-2100)
         if re.match(r'^(19|20)\d{2}$', cleaned):
             return False
         
-        # Filter out small integers (likely page numbers, etc.)
+        # Filter out small integers and decimals (likely page numbers, version numbers, indices)
         try:
-            val = float(cleaned.lower().replace('k', '').replace('m', '').replace('b', ''))
-            if 0 < val < 100 and '.' not in cleaned:
+            val = float(cleaned.lower().replace('k', '').replace('m', '').replace('b', '').replace('t', ''))
+            # Keep only: large numbers (>=100), or numbers with K/M/B/T suffix, or currency
+            has_suffix = any(c in number_str.lower() for c in 'kmbt')
+            has_currency = any(c in number_str for c in '$€£¥')
+            
+            if val < 100 and not has_suffix and not has_currency:
+                return False
+            
+            # Filter out common version/section numbers (10.1, 10.10, 4.2, etc.)
+            if '.' in cleaned and val < 100 and len(cleaned.split('.')[-1]) <= 2:
                 return False
         except:
             pass
