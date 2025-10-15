@@ -345,21 +345,28 @@ class FactExtractor:
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
 
-        prompt = f"""Extract atomic facts from this text. Identify BOTH:
-1. Subject-Relation-Object triples (factual statements)
-2. Key-Value pairs (metrics, attributes from tables/structured data)
+        prompt = f"""Extract business-relevant atomic facts from this text. Focus on:
+1. Subject-Relation-Object triples (e.g., "Company X acquired Company Y")
+2. Key-Value pairs (financial metrics, business KPIs, dates)
+
+IMPORTANT:
+- Extract ONLY facts that are explicitly stated in the text
+- Do NOT extract HTML tags, CSS classes, JavaScript code, or technical IDs
+- Do NOT make up facts - if you can't find business facts, return fewer items
+- Extract between 3-8 facts depending on content richness
+- Focus on business-relevant information (revenue, dates, partnerships, products, etc.)
 
 Text: {content}
 
-For each fact, provide:
+For each fact:
 - fact_type: "triple" or "key_value"
-- For triples: subject, relation, object
-- For key-values: key, value
-- answer_span: the exact text to extract
-- entities: key entities mentioned
+- For triples: [subject, relation, object]
+- For key-values: key and value
+- answer_span: EXACT text from the document (must be verbatim)
+- entities: main entities (companies, products, dates)
 - fact_text: natural language description
 
-Output JSON format (array combining both types):
+Output JSON format:
 [
   {{
     "fact_type": "triple",
@@ -370,7 +377,7 @@ Output JSON format (array combining both types):
   }},
   {{
     "fact_type": "key_value",
-    "key": "EBITDA",
+    "key": "Q1 2024 EBITDA",
     "value": "$400M",
     "answer_span": "$400M",
     "entities": ["2024", "Q1"],
@@ -378,7 +385,7 @@ Output JSON format (array combining both types):
   }}
 ]
 
-Extract 5-8 key facts total. Output ONLY valid JSON, no other text."""
+Extract 3-8 business facts. Output ONLY valid JSON."""
 
         try:
             # Use shared async client
@@ -476,21 +483,28 @@ Extract 5-8 key facts total. Output ONLY valid JSON, no other text."""
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
 
-        prompt = f"""Extract atomic facts from this text. Identify BOTH:
-1. Subject-Relation-Object triples (factual statements)
-2. Key-Value pairs (metrics, attributes from tables/structured data)
+        prompt = f"""Extract business-relevant atomic facts from this text. Focus on:
+1. Subject-Relation-Object triples (e.g., "Company X acquired Company Y")
+2. Key-Value pairs (financial metrics, business KPIs, dates)
+
+IMPORTANT:
+- Extract ONLY facts that are explicitly stated in the text
+- Do NOT extract HTML tags, CSS classes, JavaScript code, or technical IDs
+- Do NOT make up facts - if you can't find business facts, return fewer items
+- Extract between 3-8 facts depending on content richness
+- Focus on business-relevant information (revenue, dates, partnerships, products, etc.)
 
 Text: {content}
 
-For each fact, provide:
+For each fact:
 - fact_type: "triple" or "key_value"
-- For triples: subject, relation, object
-- For key-values: key, value
-- answer_span: the exact text to extract
-- entities: key entities mentioned
+- For triples: [subject, relation, object]
+- For key-values: key and value
+- answer_span: EXACT text from the document (must be verbatim)
+- entities: main entities (companies, products, dates)
 - fact_text: natural language description
 
-Output JSON format (array combining both types):
+Output JSON format:
 [
   {{
     "fact_type": "triple",
@@ -501,7 +515,7 @@ Output JSON format (array combining both types):
   }},
   {{
     "fact_type": "key_value",
-    "key": "EBITDA",
+    "key": "Q1 2024 EBITDA",
     "value": "$400M",
     "answer_span": "$400M",
     "entities": ["2024", "Q1"],
@@ -509,7 +523,7 @@ Output JSON format (array combining both types):
   }}
 ]
 
-Extract 5-8 key facts total. Output ONLY valid JSON, no other text."""
+Extract 3-8 business facts. Output ONLY valid JSON."""
 
         try:
             api_key = self.llm_manager.get_api_key()
