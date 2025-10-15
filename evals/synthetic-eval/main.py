@@ -3,11 +3,15 @@ Main orchestrator for synthetic evaluation dataset generation.
 
 Usage:
     python -m evals.synthetic-eval.main
+    python -m evals.synthetic-eval.main --skip-sampling --skip-facts
+    python -m evals.synthetic-eval.main --only-queries --input-facts output/intermediate_facts.jsonl
+    python -m evals.synthetic-eval.main --only-labeling --input-queries output/intermediate_queries.jsonl
 """
 
 import sys
 import logging
 import json
+import argparse
 from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
@@ -43,13 +47,132 @@ logger = logging.getLogger(__name__)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Synthetic evaluation dataset generator",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run full pipeline
+  python -m evals.synthetic-eval.main
+
+  # Skip sampling and fact extraction, use existing facts
+  python -m evals.synthetic-eval.main --skip-sampling --skip-facts --input-facts output/intermediate_facts.jsonl
+
+  # Only regenerate queries from existing facts
+  python -m evals.synthetic-eval.main --only-queries --input-facts output/intermediate_facts.jsonl
+
+  # Only redo silver labeling from existing queries
+  python -m evals.synthetic-eval.main --only-labeling --input-queries output/intermediate_queries.jsonl
+        """
+    )
+
+    # Skip flags
+    parser.add_argument('--skip-sampling', action='store_true',
+                        help='Skip chunk sampling step (requires existing sampled chunks or --input-facts)')
+    parser.add_argument('--skip-facts', action='store_true',
+                        help='Skip fact extraction step (requires --input-facts)')
+    parser.add_argument('--skip-queries', action='store_true',
+                        help='Skip query generation step (requires --input-queries)')
+
+    # Input file paths
+    parser.add_argument('--input-facts', type=str,
+                        help='Path to existing facts JSONL file (relative to synthetic-eval dir or absolute)')
+    parser.add_argument('--input-queries', type=str,
+                        help='Path to existing queries JSONL file (relative to synthetic-eval dir or absolute)')
+    parser.add_argument('--input-chunks', type=str,
+                        help='Path to existing chunks JSONL file (relative to synthetic-eval dir or absolute)')
+
+    # Only flags (shortcuts)
+    parser.add_argument('--only-queries', action='store_true',
+                        help='Only run query generation (implies --skip-sampling --skip-facts)')
+    parser.add_argument('--only-labeling', action='store_true',
+                        help='Only run silver labeling (implies --skip-sampling --skip-facts --skip-queries)')
+
+    args = parser.parse_args()
+
+    # Handle "only" shortcuts
+    if args.only_labeling:
+        args.skip_sampling = True
+        args.skip_facts = True
+        args.skip_queries = True
+    elif args.only_queries:
+        args.skip_sampling = True
+        args.skip_facts = True
+
+    # Validation
+    if args.skip_facts and not args.input_facts:
+        parser.error('--skip-facts requires --input-facts')
+    if args.skip_queries and not args.input_queries:
+        parser.error('--skip-queries requires --input-queries')
+
+    return args
+
+
+def load_facts_from_file(file_path: Path) -> list:
+    """Load facts from JSONL file."""
+    from fact_extractor import AtomicFact
+
+    logger.info(f"Loading facts from {file_path}")
+    facts = []
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                fact_dict = json.loads(line)
+                # Reconstruct AtomicFact object
+                fact = AtomicFact(**fact_dict)
+                facts.append(fact)
+
+    logger.info(f"Loaded {len(facts)} facts")
+    return facts
+
+
+def load_queries_from_file(file_path: Path) -> list:
+    """Load queries from JSONL file."""
+    from query_generator import Query
+
+    logger.info(f"Loading queries from {file_path}")
+    queries = []
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                query_dict = json.loads(line)
+                # Reconstruct Query object
+                query = Query(**query_dict)
+                queries.append(query)
+
+    logger.info(f"Loaded {len(queries)} queries")
+    return queries
+
+
+def load_chunks_from_file(file_path: Path) -> list:
+    """Load chunks from JSONL file."""
+    logger.info(f"Loading chunks from {file_path}")
+    chunks = []
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                chunk = json.loads(line)
+                chunks.append(chunk)
+
+    logger.info(f"Loaded {len(chunks)} chunks")
+    return chunks
+
+
 def main():
     """Main entry point for synthetic evaluation dataset generation."""
-    
+
     logger.info("=" * 80)
     logger.info("SYNTHETIC EVALUATION DATASET GENERATOR")
     logger.info("=" * 80)
-    
+
+    # Parse command line arguments
+    args = parse_args()
+
     # 1. Load configuration
     logger.info("\n[1/6] Loading configuration...")
     config = SyntheticEvalConfig()
@@ -57,12 +180,22 @@ def main():
     logger.info(f"  Collection: {config.collection_name}")
     logger.info(f"  Target questions: {config.target_questions}")
     logger.info(f"  Target sample size: {config.target_sample_size}")
-    
+
+    # Show pipeline plan
+    logger.info("\nPipeline plan:")
+    logger.info(f"  Sampling: {'SKIP' if args.skip_sampling else 'RUN'}")
+    logger.info(f"  Fact extraction: {'SKIP' if args.skip_facts else 'RUN'}")
+    logger.info(f"  Query generation: {'SKIP' if args.skip_queries else 'RUN'}")
+    logger.info(f"  Silver labeling: RUN")
+
+    # Resolve file paths relative to current directory
+    current_dir = Path(__file__).parent
+
     # 2. Initialize LLM manager
     logger.info("\n[2/6] Initializing LLM...")
     llm_manager = SecureAPIKeyManager()
     logger.info("  LLM manager initialized (secure API key management)")
-    
+
     # 3. Initialize Milvus retriever (read-only)
     logger.info("\n[3/6] Connecting to Milvus...")
     retriever = MilvusRetriever(
@@ -71,133 +204,200 @@ def main():
         collection_name=config.collection_name,
         enable_reranking=False
     )
-    
+
     if not retriever.connect():
         logger.error("Failed to connect to Milvus!")
         return 1
-    
+
     logger.info(f"  Connected to collection: {config.collection_name}")
-    
+
     # Get collection stats
     stats = retriever.get_collection_stats()
     logger.info(f"  Total entities: {stats.get('num_entities', 'N/A')}")
-    
+
     try:
-        # 4. Sample chunks
-        logger.info("\n[4/6] STEP 1: Sampling chunks...")
-        sampler = ChunkSampler(config, retriever)
-        
-        logger.info("  Fetching all chunks from Milvus...")
-        all_chunks = sampler.fetch_all_chunks()
-        logger.info(f"  Fetched {len(all_chunks)} total chunks")
-        
-        logger.info("  Performing stratified sampling...")
-        sampled_chunks, sampling_stats = sampler.stratified_sample(
-            all_chunks,
-            config.target_sample_size
-        )
-        logger.info(f"  Sampled {len(sampled_chunks)} chunks from {sampling_stats['num_clusters']} clusters")
-        
-        # 5. Extract facts
-        logger.info("\n[5/6] STEP 2: Extracting atomic facts...")
-        extractor = FactExtractor(config, llm_manager)
-        
-        all_facts = []
-        fact_types = defaultdict(int)
+        # Initialize variables
+        sampled_chunks = None
+        all_chunks = None
+        sampling_stats = None
 
-        # Process chunks with parallel async processing and progress bar
-        logger.info(f"  Processing {len(sampled_chunks)} chunks in parallel (concurrency=5)...")
-        logger.info(f"  Progress: Processing in batches of 20, 5 concurrent LLM calls")
+        # 4. Sample chunks (or load existing)
+        if args.skip_sampling:
+            logger.info("\n[4/6] STEP 1: Sampling chunks... SKIPPED")
 
-        # Create progress bar for individual chunks
-        pbar = tqdm(total=len(sampled_chunks), desc="Extracting facts", unit="chunk", ncols=100)
+            # If we have input chunks, load them
+            if args.input_chunks:
+                chunks_path = Path(args.input_chunks)
+                if not chunks_path.is_absolute():
+                    chunks_path = current_dir / chunks_path
+                sampled_chunks = load_chunks_from_file(chunks_path)
+                all_chunks = sampled_chunks  # For labeling step
+                sampling_stats = {
+                    'total_chunks': len(sampled_chunks),
+                    'actual_samples': len(sampled_chunks),
+                    'num_clusters': 'unknown'
+                }
+            # Otherwise, we'll fetch all chunks later for labeling
+            else:
+                logger.info("  No input chunks provided, will fetch all chunks for labeling")
+        else:
+            logger.info("\n[4/6] STEP 1: Sampling chunks...")
+            sampler = ChunkSampler(config, retriever)
 
-        # Process in batches
-        batch_size = 20  # Process 20 chunks at a time
-        total_batches = (len(sampled_chunks) + batch_size - 1) // batch_size
-        chunks_processed = 0
+            logger.info("  Fetching all chunks from Milvus...")
+            all_chunks = sampler.fetch_all_chunks()
+            logger.info(f"  Fetched {len(all_chunks)} total chunks")
 
-        for batch_idx in range(0, len(sampled_chunks), batch_size):
-            batch = sampled_chunks[batch_idx:batch_idx + batch_size]
-            batch_num = batch_idx // batch_size + 1
+            logger.info("  Performing stratified sampling...")
+            sampled_chunks, sampling_stats = sampler.stratified_sample(
+                all_chunks,
+                config.target_sample_size
+            )
+            logger.info(f"  Sampled {len(sampled_chunks)} chunks from {sampling_stats['num_clusters']} clusters")
 
-            try:
-                # Progress callback to update progress bar as chunks complete
-                def progress_callback(completed_in_batch):
-                    pbar.update(1)
-                    pbar.set_postfix({"facts": len(all_facts), "batch": f"{batch_num}/{total_batches}"})
+        # 5. Extract facts (or load existing)
+        if args.skip_facts:
+            logger.info("\n[5/6] STEP 2: Extracting atomic facts... SKIPPED")
 
-                # Extract facts from batch in parallel
-                logger.debug(f"Processing batch {batch_num}/{total_batches} ({len(batch)} chunks)...")
-                batch_results = extractor.extract_facts_batch(batch, concurrency=5, progress_callback=progress_callback)
-                logger.debug(f"Batch {batch_num}/{total_batches} completed")
+            # Load facts from file
+            facts_path = Path(args.input_facts)
+            if not facts_path.is_absolute():
+                facts_path = current_dir / facts_path
+            all_facts = load_facts_from_file(facts_path)
 
-                # Process results
-                for idx, facts in enumerate(batch_results):
-                    if isinstance(facts, Exception):
-                        logger.warning(f"  Exception in chunk {batch[idx].get('chunk_id', 'unknown')}: {facts}")
-                        continue  # Skip failed chunks
-                    if isinstance(facts, list):
-                        all_facts.extend(facts)
-                        # Count fact types
-                        for fact in facts:
-                            fact_types[fact.fact_type] += 1
+            # Compute fact type distribution
+            fact_types = defaultdict(int)
+            for fact in all_facts:
+                fact_types[fact.fact_type] += 1
 
-                chunks_processed += len(batch)
+        else:
+            logger.info("\n[5/6] STEP 2: Extracting atomic facts...")
+            extractor = FactExtractor(config, llm_manager)
 
-                # Limit total facts to prevent memory issues
-                if len(all_facts) >= config.max_facts_per_chunk * len(sampled_chunks):
-                    pbar.write(f"  Reached fact limit ({len(all_facts)} facts), stopping extraction")
-                    break
+            all_facts = []
+            fact_types = defaultdict(int)
 
-            except Exception as e:
-                logger.error(f"  Error processing batch {batch_num}: {e}", exc_info=True)
-                # Still update progress bar for failed batch
-                pbar.update(len(batch))
-                continue
+            # Process chunks with parallel async processing and progress bar
+            logger.info(f"  Processing {len(sampled_chunks)} chunks in parallel (concurrency=5)...")
+            logger.info(f"  Progress: Processing in batches of 20, 5 concurrent LLM calls")
 
-        pbar.close()
-        
-        logger.info(f"  Extracted {len(all_facts)} total facts")
-        logger.info(f"  Average facts per chunk: {len(all_facts) / len(sampled_chunks):.1f}")
-        logger.info(f"  Fact type distribution:")
-        for fact_type, count in sorted(fact_types.items()):
-            logger.info(f"    - {fact_type}: {count}")
-        
-        # Save intermediate facts if enabled
-        if config.save_intermediate:
-            # Ensure output directory exists
-            Path(config.output_dir).mkdir(parents=True, exist_ok=True)
-            facts_path = Path(config.output_dir) / "intermediate_facts.jsonl"
-            logger.info(f"  Saving facts to {facts_path}")
-            with open(facts_path, 'w', encoding='utf-8') as f:
-                for fact in all_facts:
-                    f.write(json.dumps(fact.to_dict(), ensure_ascii=False) + '\n')
-        
-        # 6. Generate queries
-        logger.info("\n[6/6] STEP 3: Generating queries...")
-        generator = QueryGenerator(config, llm_manager)
-        
-        queries, query_stats = generator.generate_all_queries(all_facts)
-        
-        logger.info(f"  Generated {len(queries)} total queries")
-        logger.info(f"    - Single-hop: {query_stats.get('single_hop', 0)}")
-        logger.info(f"    - Multi-hop: {query_stats.get('multi_hop', 0)}")
-        
-        # Save intermediate queries if enabled
-        if config.save_intermediate:
-            # Ensure output directory exists
-            Path(config.output_dir).mkdir(parents=True, exist_ok=True)
-            queries_path = Path(config.output_dir) / "intermediate_queries.jsonl"
-            logger.info(f"  Saving queries to {queries_path}")
-            with open(queries_path, 'w', encoding='utf-8') as f:
-                for query in queries:
-                    f.write(json.dumps(query.to_dict(), ensure_ascii=False) + '\n')
-        
+            # Create progress bar for individual chunks
+            pbar = tqdm(total=len(sampled_chunks), desc="Extracting facts", unit="chunk", ncols=100)
+
+            # Process in batches
+            batch_size = 20  # Process 20 chunks at a time
+            total_batches = (len(sampled_chunks) + batch_size - 1) // batch_size
+            chunks_processed = 0
+
+            for batch_idx in range(0, len(sampled_chunks), batch_size):
+                batch = sampled_chunks[batch_idx:batch_idx + batch_size]
+                batch_num = batch_idx // batch_size + 1
+
+                try:
+                    # Progress callback to update progress bar as chunks complete
+                    def progress_callback(completed_in_batch):
+                        pbar.update(1)
+                        pbar.set_postfix({"facts": len(all_facts), "batch": f"{batch_num}/{total_batches}"})
+
+                    # Extract facts from batch in parallel
+                    logger.debug(f"Processing batch {batch_num}/{total_batches} ({len(batch)} chunks)...")
+                    batch_results = extractor.extract_facts_batch(batch, concurrency=5, progress_callback=progress_callback)
+                    logger.debug(f"Batch {batch_num}/{total_batches} completed")
+
+                    # Process results
+                    for idx, facts in enumerate(batch_results):
+                        if isinstance(facts, Exception):
+                            logger.warning(f"  Exception in chunk {batch[idx].get('chunk_id', 'unknown')}: {facts}")
+                            continue  # Skip failed chunks
+                        if isinstance(facts, list):
+                            all_facts.extend(facts)
+                            # Count fact types
+                            for fact in facts:
+                                fact_types[fact.fact_type] += 1
+
+                    chunks_processed += len(batch)
+
+                    # Limit total facts to prevent memory issues
+                    if len(all_facts) >= config.max_facts_per_chunk * len(sampled_chunks):
+                        pbar.write(f"  Reached fact limit ({len(all_facts)} facts), stopping extraction")
+                        break
+
+                except Exception as e:
+                    logger.error(f"  Error processing batch {batch_num}: {e}", exc_info=True)
+                    # Still update progress bar for failed batch
+                    pbar.update(len(batch))
+                    continue
+
+            pbar.close()
+
+            logger.info(f"  Extracted {len(all_facts)} total facts")
+            logger.info(f"  Average facts per chunk: {len(all_facts) / len(sampled_chunks):.1f}")
+            logger.info(f"  Fact type distribution:")
+            for fact_type, count in sorted(fact_types.items()):
+                logger.info(f"    - {fact_type}: {count}")
+
+            # Save intermediate facts if enabled
+            if config.save_intermediate:
+                # Ensure output directory exists
+                Path(config.output_dir).mkdir(parents=True, exist_ok=True)
+                facts_path = Path(config.output_dir) / "intermediate_facts.jsonl"
+                logger.info(f"  Saving facts to {facts_path}")
+                with open(facts_path, 'w', encoding='utf-8') as f:
+                    for fact in all_facts:
+                        f.write(json.dumps(fact.to_dict(), ensure_ascii=False) + '\n')
+
+        # 6. Generate queries (or load existing)
+        if args.skip_queries:
+            logger.info("\n[6/6] STEP 3: Generating queries... SKIPPED")
+
+            # Load queries from file
+            queries_path = Path(args.input_queries)
+            if not queries_path.is_absolute():
+                queries_path = current_dir / queries_path
+            queries = load_queries_from_file(queries_path)
+
+            # Compute query stats
+            query_stats = {
+                'total_queries': len(queries),
+                'single_hop': sum(1 for q in queries if q.query_type == 'single_hop'),
+                'multi_hop': sum(1 for q in queries if q.query_type == 'multi_hop'),
+                'query_styles': defaultdict(int)
+            }
+            for q in queries:
+                query_stats['query_styles'][q.question_style] += 1
+            query_stats['query_styles'] = dict(query_stats['query_styles'])
+
+        else:
+            logger.info("\n[6/6] STEP 3: Generating queries...")
+            generator = QueryGenerator(config, llm_manager)
+
+            queries, query_stats = generator.generate_all_queries(all_facts)
+
+            logger.info(f"  Generated {len(queries)} total queries")
+            logger.info(f"    - Single-hop: {query_stats.get('single_hop', 0)}")
+            logger.info(f"    - Multi-hop: {query_stats.get('multi_hop', 0)}")
+
+            # Save intermediate queries if enabled
+            if config.save_intermediate:
+                # Ensure output directory exists
+                Path(config.output_dir).mkdir(parents=True, exist_ok=True)
+                queries_path = Path(config.output_dir) / "intermediate_queries.jsonl"
+                logger.info(f"  Saving queries to {queries_path}")
+                with open(queries_path, 'w', encoding='utf-8') as f:
+                    for query in queries:
+                        f.write(json.dumps(query.to_dict(), ensure_ascii=False) + '\n')
+
         # 7. Assign silver labels
         logger.info("\nSTEP 4: Assigning silver labels...")
         labeler = SilverLabeler(config, llm_manager, retriever)
-        
+
+        # Fetch all chunks if we don't have them
+        if all_chunks is None:
+            logger.info("  Fetching all chunks from Milvus for labeling...")
+            sampler = ChunkSampler(config, retriever)
+            all_chunks = sampler.fetch_all_chunks()
+            logger.info(f"  Fetched {len(all_chunks)} chunks")
+
         qrels = labeler.batch_label_queries(queries, all_chunks)
         
         logger.info(f"  Labeled {len(qrels)} queries")
@@ -210,35 +410,36 @@ def main():
         formatter = OutputFormatter(config.output_dir)
         
         # Combine all stats
+        num_sampled = len(sampled_chunks) if sampled_chunks else 0
         all_stats = {
-            'sampling': sampling_stats,
+            'sampling': sampling_stats if sampling_stats else {'skipped': True},
             'fact_extraction': {
                 'total_facts': len(all_facts),
-                'avg_facts_per_chunk': len(all_facts) / len(sampled_chunks),
+                'avg_facts_per_chunk': len(all_facts) / num_sampled if num_sampled > 0 else 0,
                 'fact_types': dict(fact_types)
             },
             'query_generation': query_stats,
             'silver_labeling': label_stats
         }
-        
+
         # Write all files
         output_files = formatter.write_all(queries, qrels, all_chunks, all_stats)
-        
+
         logger.info(f"\nOutput files written to: {config.output_dir}")
         for file_type, file_path in output_files.items():
             logger.info(f"  - {file_type}: {Path(file_path).name}")
-        
+
         # 9. Optional: Validate retrieval
         if config.validate_retrieval:
             logger.info("\nSTEP 6: Validating retrieval...")
             validate_retrieval(queries, retriever, config.validation_top_k)
-        
+
         logger.info("\n" + "=" * 80)
         logger.info("GENERATION COMPLETED SUCCESSFULLY!")
         logger.info("=" * 80)
         logger.info(f"\nSummary:")
-        logger.info(f"  Total chunks: {len(all_chunks)}")
-        logger.info(f"  Sampled chunks: {len(sampled_chunks)}")
+        logger.info(f"  Total chunks: {len(all_chunks) if all_chunks else 0}")
+        logger.info(f"  Sampled chunks: {num_sampled}")
         logger.info(f"  Extracted facts: {len(all_facts)}")
         logger.info(f"  Generated queries: {len(queries)}")
         logger.info(f"  Output directory: {config.output_dir}")
