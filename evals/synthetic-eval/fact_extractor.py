@@ -177,222 +177,6 @@ class FactExtractor:
         self.fact_counter += 1
         return f"{chunk_id}_fact_{self.fact_counter}"
     
-    def _extract_date_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract date facts using regex with deduplication."""
-        facts = []
-        dates = extract_dates(content)
-        
-        # Track seen dates to avoid duplicates
-        seen_dates = set()
-        
-        # Limit dates to avoid too many facts
-        for date in dates:
-            # Skip duplicates
-            if date in seen_dates:
-                continue
-            
-            start, end = find_answer_span(date, content)
-            if start == -1:  # Skip if not found
-                continue
-            
-            # Get context
-            context_start = max(0, start - 50)
-            context_end = min(len(content), end + 50)
-            context = content[context_start:context_end]
-            
-            # Skip if context suggests code/markup
-            if self._is_code_or_markup_context(context):
-                continue
-            
-            seen_dates.add(date)
-            
-            fact = AtomicFact(
-                fact_id=self._generate_fact_id(chunk_id),
-                chunk_id=chunk_id,
-                fact_type="date",
-                fact_text=f"Date: {date}",
-                answer_span=date,
-                answer_start=start,
-                answer_end=end,
-                entities=[date],
-                metadata={"pattern": "regex", "context": context.strip()[:100]}
-            )
-            facts.append(fact)
-            
-            if len(facts) >= 5:  # Max 5 dates per chunk
-                break
-        
-        return facts
-    
-    def _extract_number_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract numeric facts using regex with deduplication and quality filtering."""
-        facts = []
-        numbers = extract_numbers(content)
-        
-        # Track seen numbers to avoid duplicates
-        seen_numbers = set()
-        
-        # Pre-filter and limit in one pass for efficiency
-        significant_numbers = []
-        for number in numbers:
-            # Skip if already seen (deduplication)
-            if number in seen_numbers:
-                continue
-            
-            if self._is_significant_number(number):
-                # Get context to verify it's business content
-                start, end = find_answer_span(number, content)
-                if start == -1:
-                    continue
-                
-                # Check context for HTML/JavaScript pollution
-                context_start = max(0, start - 50)
-                context_end = min(len(content), end + 50)
-                context = content[context_start:context_end]
-                
-                # Skip if context suggests code/markup
-                if self._is_code_or_markup_context(context):
-                    continue
-                
-                seen_numbers.add(number)
-                significant_numbers.append((number, start, end, context))
-                
-                if len(significant_numbers) >= 5:  # Limit per chunk
-                    break
-        
-        # Create facts from filtered numbers
-        for number, start, end, context in significant_numbers:
-            fact = AtomicFact(
-                fact_id=self._generate_fact_id(chunk_id),
-                chunk_id=chunk_id,
-                fact_type="number",
-                fact_text=f"Number: {number}",
-                answer_span=number,
-                answer_start=start,
-                answer_end=end,
-                entities=[number],
-                metadata={"pattern": "regex", "context": context.strip()[:100]}  # Limit context size
-            )
-            facts.append(fact)
-        
-        return facts
-    
-    def _is_code_or_markup_context(self, context: str) -> bool:
-        """
-        Detect if context is from HTML/CSS/JavaScript code rather than business content.
-        
-        Args:
-            context: Text context around the extracted value
-            
-        Returns:
-            True if context suggests code/markup
-        """
-        # Common HTML/CSS/JavaScript indicators
-        code_indicators = [
-            '<td', '</td>', '<tr', '</tr>', '<div', '</div>',  # HTML tags
-            'class=', 'id=', 'style=',  # HTML attributes
-            'colspan=', 'rowspan=', 'href=',  # HTML table/link attributes
-            'var ', 'const ', 'let ', 'function(',  # JavaScript keywords
-            '.css', '.js', '$(', 'jQuery',  # JS/jQuery
-            '<!--', '-->', '/*', '*/',  # Comments
-            '{', '}', '();',  # Code syntax
-            'offsetWidth', 'offsetHeight', 'padding', 'margin',  # CSS properties
-            'bw', 'bwalign', 'bwpadl',  # Custom CSS class prefixes
-        ]
-        
-        # Check for multiple indicators (more robust than single match)
-        context_lower = context.lower()
-        indicator_count = sum(1 for indicator in code_indicators if indicator.lower() in context_lower)
-        
-        # If 2+ indicators found, likely code/markup
-        return indicator_count >= 2
-    
-    def _extract_currency_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract currency amounts using regex with deduplication."""
-        facts = []
-        currencies = extract_currencies(content)
-        
-        # Track seen currencies to avoid duplicates
-        seen_currencies = set()
-        
-        for currency in currencies:
-            # Skip duplicates
-            if currency in seen_currencies:
-                continue
-            
-            start, end = find_answer_span(currency, content)
-            if start == -1:
-                continue
-            
-            # Get context
-            context_start = max(0, start - 50)
-            context_end = min(len(content), end + 50)
-            context = content[context_start:context_end]
-            
-            # Skip if context suggests code/markup
-            if self._is_code_or_markup_context(context):
-                continue
-            
-            seen_currencies.add(currency)
-            
-            fact = AtomicFact(
-                fact_id=self._generate_fact_id(chunk_id),
-                chunk_id=chunk_id,
-                fact_type="currency",
-                fact_text=f"Currency: {currency}",
-                answer_span=currency,
-                answer_start=start,
-                answer_end=end,
-                entities=[currency],
-                metadata={"pattern": "regex", "context": context.strip()[:100]}
-            )
-            facts.append(fact)
-            
-            if len(facts) >= 5:  # Limit per chunk
-                break
-        
-        return facts
-    
-    def _is_significant_number(self, number_str: str) -> bool:
-        """
-        Check if number is significant (not year, page number, version, HTML artifact, etc.).
-        
-        Filters out:
-        - Years (1900-2100)
-        - Small integers < 100 (page numbers, counts, HTML indices)
-        - Version numbers (10.1, 10.10)
-        - HTML/CSS artifacts (0 b, colspan values)
-        - JavaScript code numbers
-        """
-        # Remove formatting
-        cleaned = re.sub(r'[,$€£¥\s]', '', number_str)
-        
-        # Filter out HTML/CSS artifacts like "0 b", "1 b"
-        if 'b' in number_str.lower() and len(cleaned) <= 3:
-            return False
-        
-        # Filter out years (4-digit numbers between 1900-2100)
-        if re.match(r'^(19|20)\d{2}$', cleaned):
-            return False
-        
-        # Filter out small integers and decimals (likely page numbers, version numbers, indices)
-        try:
-            val = float(cleaned.lower().replace('k', '').replace('m', '').replace('b', '').replace('t', ''))
-            # Keep only: large numbers (>=100), or numbers with K/M/B/T suffix, or currency
-            has_suffix = any(c in number_str.lower() for c in 'kmbt')
-            has_currency = any(c in number_str for c in '$€£¥')
-            
-            if val < 100 and not has_suffix and not has_currency:
-                return False
-            
-            # Filter out common version/section numbers (10.1, 10.10, 4.2, etc.)
-            if '.' in cleaned and val < 100 and len(cleaned.split('.')[-1]) <= 2:
-                return False
-        except:
-            pass
-        
-        return True
-    
     async def _extract_all_facts_llm_async(self, chunk_id: str, content: str) -> List[AtomicFact]:
         """
         Extract ALL fact types (dates, numbers, currencies, triples, key-values) in a single LLM call.
@@ -409,47 +193,70 @@ class FactExtractor:
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
 
-        prompt = f"""Extract business-relevant atomic facts from this text. Focus on:
-1. Subject-Relation-Object triples (e.g., "Company X acquired Company Y")
-2. Key-Value pairs (financial metrics, business KPIs, dates)
+        prompt = f"""Extract ALL types of business-relevant atomic facts from this text:
 
-IMPORTANT:
-- Extract ONLY facts that are explicitly stated in the text
+1. **Dates**: Any dates, quarters, years (e.g., "March 15, 2024", "Q1 2024", "FY 2023")
+2. **Numbers**: Significant business numbers (revenue, employees, percentages, etc.)
+3. **Currencies**: Financial amounts with currency symbols (e.g., "$400M", "€1.2B")
+4. **Triples**: Subject-Relation-Object relationships (e.g., "Company X acquired Company Y")
+5. **Key-Values**: Business metrics, KPIs, attributes (e.g., "Revenue: $400M")
+
+CRITICAL RULES:
+- Extract ONLY facts explicitly stated in the text
 - Do NOT extract HTML tags, CSS classes, JavaScript code, or technical IDs
-- Do NOT make up facts - if you can't find business facts, return fewer items
-- Extract between 3-8 facts depending on content richness
-- Focus on business-relevant information (revenue, dates, partnerships, products, etc.)
+- Do NOT extract meaningless numbers from code (offsetWidth, colspan, etc.)
+- Focus on business-relevant information only
+- Extract 5-12 facts depending on content richness
+- Do NOT make up facts - return fewer if content lacks business information
 
 Text: {content}
 
-For each fact:
-- fact_type: "triple" or "key_value"
+For each fact, provide:
+- fact_type: "date", "number", "currency", "triple", or "key_value"
+- answer_span: EXACT text from document (must be verbatim)
+- entities: main entities mentioned (companies, products, dates, etc.)
+- fact_text: natural language description
 - For triples: [subject, relation, object]
 - For key-values: key and value
-- answer_span: EXACT text from the document (must be verbatim)
-- entities: main entities (companies, products, dates)
-- fact_text: natural language description
 
 Output JSON format:
 [
   {{
+    "fact_type": "date",
+    "answer_span": "March 15, 2024",
+    "entities": ["2024", "March"],
+    "fact_text": "The event occurred on March 15, 2024"
+  }},
+  {{
+    "fact_type": "currency", 
+    "answer_span": "$400M",
+    "entities": ["Q1", "2024"],
+    "fact_text": "Q1 2024 revenue was $400M"
+  }},
+  {{
+    "fact_type": "number",
+    "answer_span": "1,500",
+    "entities": ["employees", "company"],
+    "fact_text": "The company has 1,500 employees"
+  }},
+  {{
     "fact_type": "triple",
-    "triple": ["Elastic N.V.", "fiscal_year_revenue", "$1.2B"],
-    "answer_span": "$1.2B",
-    "entities": ["Elastic N.V.", "2024"],
-    "fact_text": "Elastic N.V. reported fiscal year revenue of $1.2B"
+    "triple": ["Elastic N.V.", "acquired", "Build Security Ltd."],
+    "answer_span": "Build Security Ltd.",
+    "entities": ["Elastic N.V.", "Build Security Ltd."],
+    "fact_text": "Elastic N.V. acquired Build Security Ltd."
   }},
   {{
     "fact_type": "key_value",
-    "key": "Q1 2024 EBITDA",
-    "value": "$400M",
-    "answer_span": "$400M",
-    "entities": ["2024", "Q1"],
-    "fact_text": "Q1 2024 EBITDA was $400M"
+    "key": "EBITDA margin",
+    "value": "25%",
+    "answer_span": "25%",
+    "entities": ["Q1", "2024"],
+    "fact_text": "Q1 2024 EBITDA margin was 25%"
   }}
 ]
 
-Extract 3-8 business facts. Output ONLY valid JSON."""
+Extract 5-12 business facts. Output ONLY valid JSON."""
 
         try:
             # Use shared async client
@@ -511,10 +318,15 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
                         "value": fact_data.get('value', ''),
                         "source": "llm"
                     }
-                else:  # triple
+                elif fact_type == "triple":
                     metadata = {
                         "triple": fact_data.get('triple', []),
                         "source": "llm"
+                    }
+                else:  # date, number, currency
+                    metadata = {
+                        "source": "llm",
+                        "extracted_type": fact_type
                     }
 
                 fact = AtomicFact(
@@ -540,63 +352,86 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
             logger.error(f"Error extracting semantic facts with LLM: {e}")
             return []
 
-    def _extract_semantic_facts_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
+    def _extract_all_facts_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
         """
-        Extract both triples and key-value pairs in a single unified LLM call (optimized).
+        Extract ALL fact types (dates, numbers, currencies, triples, key-values) in a single LLM call.
 
         Args:
             chunk_id: Chunk identifier
             content: Chunk content
 
         Returns:
-            List of AtomicFact objects for both triples and key-values
+            List of AtomicFact objects for all fact types
         """
         # Limit content length for LLM
         max_content_len = 2000
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
 
-        prompt = f"""Extract business-relevant atomic facts from this text. Focus on:
-1. Subject-Relation-Object triples (e.g., "Company X acquired Company Y")
-2. Key-Value pairs (financial metrics, business KPIs, dates)
+        prompt = f"""Extract ALL types of business-relevant atomic facts from this text:
 
-IMPORTANT:
-- Extract ONLY facts that are explicitly stated in the text
+1. **Dates**: Any dates, quarters, years (e.g., "March 15, 2024", "Q1 2024", "FY 2023")
+2. **Numbers**: Significant business numbers (revenue, employees, percentages, etc.)
+3. **Currencies**: Financial amounts with currency symbols (e.g., "$400M", "€1.2B")
+4. **Triples**: Subject-Relation-Object relationships (e.g., "Company X acquired Company Y")
+5. **Key-Values**: Business metrics, KPIs, attributes (e.g., "Revenue: $400M")
+
+CRITICAL RULES:
+- Extract ONLY facts explicitly stated in the text
 - Do NOT extract HTML tags, CSS classes, JavaScript code, or technical IDs
-- Do NOT make up facts - if you can't find business facts, return fewer items
-- Extract between 3-8 facts depending on content richness
-- Focus on business-relevant information (revenue, dates, partnerships, products, etc.)
+- Do NOT extract meaningless numbers from code (offsetWidth, colspan, etc.)
+- Focus on business-relevant information only
+- Extract 5-12 facts depending on content richness
+- Do NOT make up facts - return fewer if content lacks business information
 
 Text: {content}
 
-For each fact:
-- fact_type: "triple" or "key_value"
+For each fact, provide:
+- fact_type: "date", "number", "currency", "triple", or "key_value"
+- answer_span: EXACT text from document (must be verbatim)
+- entities: main entities mentioned (companies, products, dates, etc.)
+- fact_text: natural language description
 - For triples: [subject, relation, object]
 - For key-values: key and value
-- answer_span: EXACT text from the document (must be verbatim)
-- entities: main entities (companies, products, dates)
-- fact_text: natural language description
 
 Output JSON format:
 [
   {{
+    "fact_type": "date",
+    "answer_span": "March 15, 2024",
+    "entities": ["2024", "March"],
+    "fact_text": "The event occurred on March 15, 2024"
+  }},
+  {{
+    "fact_type": "currency", 
+    "answer_span": "$400M",
+    "entities": ["Q1", "2024"],
+    "fact_text": "Q1 2024 revenue was $400M"
+  }},
+  {{
+    "fact_type": "number",
+    "answer_span": "1,500",
+    "entities": ["employees", "company"],
+    "fact_text": "The company has 1,500 employees"
+  }},
+  {{
     "fact_type": "triple",
-    "triple": ["Elastic N.V.", "fiscal_year_revenue", "$1.2B"],
-    "answer_span": "$1.2B",
-    "entities": ["Elastic N.V.", "2024"],
-    "fact_text": "Elastic N.V. reported fiscal year revenue of $1.2B"
+    "triple": ["Elastic N.V.", "acquired", "Build Security Ltd."],
+    "answer_span": "Build Security Ltd.",
+    "entities": ["Elastic N.V.", "Build Security Ltd."],
+    "fact_text": "Elastic N.V. acquired Build Security Ltd."
   }},
   {{
     "fact_type": "key_value",
-    "key": "Q1 2024 EBITDA",
-    "value": "$400M",
-    "answer_span": "$400M",
-    "entities": ["2024", "Q1"],
-    "fact_text": "Q1 2024 EBITDA was $400M"
+    "key": "EBITDA margin",
+    "value": "25%",
+    "answer_span": "25%",
+    "entities": ["Q1", "2024"],
+    "fact_text": "Q1 2024 EBITDA margin was 25%"
   }}
 ]
 
-Extract 3-8 business facts. Output ONLY valid JSON."""
+Extract 5-12 business facts. Output ONLY valid JSON."""
 
         try:
             api_key = self.llm_manager.get_api_key()
@@ -657,10 +492,15 @@ Extract 3-8 business facts. Output ONLY valid JSON."""
                         "value": fact_data.get('value', ''),
                         "source": "llm"
                     }
-                else:  # triple
+                elif fact_type == "triple":
                     metadata = {
                         "triple": fact_data.get('triple', []),
                         "source": "llm"
+                    }
+                else:  # date, number, currency
+                    metadata = {
+                        "source": "llm",
+                        "extracted_type": fact_type
                     }
 
                 fact = AtomicFact(
