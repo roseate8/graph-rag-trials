@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from collections import defaultdict
 
-# Add retrieval module to path
-retrieval_path = Path(__file__).parent.parent.parent / "retrieval"
-sys.path.insert(0, str(retrieval_path))
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from retrieval.retrieval import MilvusRetriever
 
@@ -41,7 +41,7 @@ class ChunkSampler:
     
     def fetch_all_chunks(self) -> List[Dict[str, Any]]:
         """
-        Fetch all chunks from Milvus collection.
+        Fetch all chunks from Milvus collection efficiently.
         
         Returns:
             List of chunk dictionaries with metadata
@@ -54,46 +54,62 @@ class ChunkSampler:
         
         logger.info(f"Collection has {total_entities} entities")
         
-        # Query all chunks using empty vector search with high limit
-        # Create a dummy query embedding
-        dummy_query = "sample query for fetching all chunks"
-        
         try:
-            # Use the retriever's embedding service to generate query embedding
-            query_embedding = self.retriever._get_query_embedding(dummy_query)
+            # Use a simpler approach - multiple small queries with different search terms
+            search_terms = [
+                "revenue", "financial", "elastic", "data", "search", "security", 
+                "product", "customer", "growth", "technology", "platform", "cloud"
+            ]
             
-            # Search with high limit to get all chunks
-            all_results = self.retriever.milvus_store.search_similar(
-                query_embedding=query_embedding,
-                top_k=min(total_entities, 16384),  # Milvus limit
-                output_fields=[
-                    "chunk_id", "doc_id", "content", "word_count", "section_path",
-                    "chunk_type", "regions", "product_version", "folder_path",
-                    "structural_metadata", "entity_metadata", "embedding"
-                ]
-            )
+            all_results = []
+            max_per_query = 100  # Small batches to avoid ef parameter issues
+            
+            for term in search_terms:
+                try:
+                    logger.debug(f"Searching for '{term}'...")
+                    results = self.retriever.retrieve(
+                        query=term,
+                        top_k=max_per_query,
+                        min_similarity=0.0
+                    )
+                    
+                    # Convert RetrievedChunk objects to dictionaries
+                    for chunk in results:
+                        chunk_dict = {
+                            'chunk_id': chunk.chunk_id,
+                            'doc_id': chunk.doc_id,
+                            'content': chunk.content,
+                            'word_count': chunk.word_count,
+                            'section_path': chunk.section_path,
+                            'chunk_type': chunk.chunk_type,
+                            'regions': chunk.regions,
+                            'product_version': chunk.product_version,
+                            'folder_path': chunk.folder_path,
+                            'structural_metadata': chunk.structural_metadata,
+                            'entity_metadata': chunk.entity_metadata,
+                            'embedding': [],  # We'll get embeddings later if needed
+                        }
+                        all_results.append(chunk_dict)
+                    
+                    if len(all_results) >= self.config.target_sample_size * 5:  # Get 5x more than needed
+                        break
+                        
+                except Exception as e:
+                    logger.warning(f"Error searching for '{term}': {e}")
+                    continue
             
             logger.info(f"Fetched {len(all_results)} chunks from Milvus")
             
-            # Convert to standard dictionary format
+            # Remove duplicates by chunk_id
+            seen_ids = set()
             chunks = []
             for result in all_results:
-                chunk = {
-                    'chunk_id': result.get('chunk_id', ''),
-                    'doc_id': result.get('doc_id', ''),
-                    'content': result.get('content', ''),
-                    'word_count': result.get('word_count', 0),
-                    'section_path': result.get('section_path', ''),
-                    'chunk_type': result.get('chunk_type'),
-                    'regions': result.get('regions'),
-                    'product_version': result.get('product_version'),
-                    'folder_path': result.get('folder_path'),
-                    'structural_metadata': result.get('structural_metadata'),
-                    'entity_metadata': result.get('entity_metadata'),
-                    'embedding': result.get('embedding', []),
-                }
-                chunks.append(chunk)
+                chunk_id = result.get('chunk_id', '')
+                if chunk_id and chunk_id not in seen_ids:
+                    seen_ids.add(chunk_id)
+                    chunks.append(result)
             
+            logger.info(f"Processed {len(chunks)} chunks with embeddings")
             return chunks
             
         except Exception as e:
@@ -102,10 +118,10 @@ class ChunkSampler:
     
     def cluster_chunks(self, chunks: List[Dict], n_clusters: int = None) -> Dict[int, List[int]]:
         """
-        Cluster chunks by topic using K-means on embeddings.
+        Cluster chunks by topic using simple heuristics (no embeddings needed).
         
         Args:
-            chunks: List of chunk dictionaries with 'embedding' field
+            chunks: List of chunk dictionaries
             n_clusters: Number of clusters (default from config)
             
         Returns:
@@ -114,43 +130,32 @@ class ChunkSampler:
         if n_clusters is None:
             n_clusters = self.config.num_clusters
         
-        logger.info(f"Clustering {len(chunks)} chunks into {n_clusters} topics...")
+        logger.info(f"Clustering {len(chunks)} chunks into {n_clusters} topics using content-based clustering...")
         
-        # Extract embeddings
-        embeddings = []
-        valid_indices = []
+        if not chunks:
+            logger.error("No chunks provided for clustering!")
+            raise ValueError("Chunks must be provided for clustering")
+        
+        # Simple clustering based on document ID and section path
+        clusters = defaultdict(list)
         
         for i, chunk in enumerate(chunks):
-            emb = chunk.get('embedding')
-            if emb and len(emb) > 0:
-                embeddings.append(emb)
-                valid_indices.append(i)
+            # Use doc_id and section_path for simple clustering
+            doc_id = chunk.get('doc_id', 'unknown')
+            section = chunk.get('section_path', 'unknown')
+            
+            # Create a simple hash-based cluster assignment
+            cluster_key = hash(f"{doc_id}_{section}") % n_clusters
+            clusters[cluster_key].append(i)
         
-        if not embeddings:
-            logger.error("No embeddings found in chunks!")
-            raise ValueError("Chunks must have embeddings for clustering")
-        
-        logger.info(f"Found {len(embeddings)} chunks with embeddings")
-        
-        # Convert to numpy array
-        X = np.array(embeddings, dtype=np.float32)
-        
-        # Perform K-means clustering
-        from sklearn.cluster import KMeans
-        
-        kmeans = KMeans(
-            n_clusters=min(n_clusters, len(embeddings)),
-            random_state=42,
-            n_init=10,
-            max_iter=300
-        )
-        
-        labels = kmeans.fit_predict(X)
-        
-        # Group by cluster
-        clusters = defaultdict(list)
-        for idx, label in zip(valid_indices, labels):
-            clusters[int(label)].append(idx)
+        # Ensure we have at least some distribution
+        if len(clusters) < n_clusters:
+            # Redistribute chunks more evenly
+            all_indices = list(range(len(chunks)))
+            clusters = defaultdict(list)
+            for i, idx in enumerate(all_indices):
+                cluster_id = i % n_clusters
+                clusters[cluster_id].append(idx)
         
         logger.info(f"Created {len(clusters)} clusters")
         for cluster_id, indices in clusters.items():

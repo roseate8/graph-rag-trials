@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Dict, Any
-from .query_generator import Query
+from query_generator import Query
 
 logger = logging.getLogger(__name__)
 

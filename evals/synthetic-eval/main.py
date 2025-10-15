@@ -10,10 +10,15 @@ import logging
 import json
 from pathlib import Path
 from collections import defaultdict
+from tqdm import tqdm
 
-# Add paths
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
 current_dir = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(current_dir))
+vector_ingest_path = project_root / "vector-ingest" / "src"
+sys.path.insert(0, str(vector_ingest_path))
 
 from config import SyntheticEvalConfig
 from chunk_sampler import ChunkSampler
@@ -23,11 +28,6 @@ from silver_labeler import SilverLabeler
 from output_formatter import OutputFormatter
 
 # Import dependencies
-vector_ingest_path = Path(__file__).parent.parent.parent / "vector-ingest" / "src"
-sys.path.insert(0, str(vector_ingest_path))
-retrieval_path = Path(__file__).parent.parent.parent / "retrieval"
-sys.path.insert(0, str(retrieval_path))
-
 from chunking.processors.llm_utils import SecureAPIKeyManager
 from retrieval.retrieval import MilvusRetriever
 
@@ -101,17 +101,26 @@ def main():
         
         all_facts = []
         fact_types = defaultdict(int)
-        
-        for i, chunk in enumerate(sampled_chunks):
-            if i % 50 == 0:
-                logger.info(f"  Processing chunk {i}/{len(sampled_chunks)}...")
-            
-            facts = extractor.extract_facts(chunk)
-            all_facts.extend(facts)
-            
-            # Count fact types
-            for fact in facts:
-                fact_types[fact.fact_type] += 1
+
+        # Process chunks with progress bar
+        logger.info(f"  Processing {len(sampled_chunks)} chunks...")
+        for chunk in tqdm(sampled_chunks, desc="Extracting facts", unit="chunk"):
+            try:
+                facts = extractor.extract_facts(chunk)
+                all_facts.extend(facts)
+
+                # Count fact types
+                for fact in facts:
+                    fact_types[fact.fact_type] += 1
+
+                # Limit total facts to prevent memory issues
+                if len(all_facts) >= config.max_facts_per_chunk * len(sampled_chunks):
+                    logger.info(f"  Reached fact limit ({len(all_facts)} facts), stopping extraction")
+                    break
+
+            except Exception as e:
+                logger.warning(f"  Error processing chunk {chunk.get('chunk_id', 'unknown')}: {e}")
+                continue
         
         logger.info(f"  Extracted {len(all_facts)} total facts")
         logger.info(f"  Average facts per chunk: {len(all_facts) / len(sampled_chunks):.1f}")
@@ -121,6 +130,8 @@ def main():
         
         # Save intermediate facts if enabled
         if config.save_intermediate:
+            # Ensure output directory exists
+            Path(config.output_dir).mkdir(parents=True, exist_ok=True)
             facts_path = Path(config.output_dir) / "intermediate_facts.jsonl"
             logger.info(f"  Saving facts to {facts_path}")
             with open(facts_path, 'w', encoding='utf-8') as f:
@@ -139,6 +150,8 @@ def main():
         
         # Save intermediate queries if enabled
         if config.save_intermediate:
+            # Ensure output directory exists
+            Path(config.output_dir).mkdir(parents=True, exist_ok=True)
             queries_path = Path(config.output_dir) / "intermediate_queries.jsonl"
             logger.info(f"  Saving queries to {queries_path}")
             with open(queries_path, 'w', encoding='utf-8') as f:

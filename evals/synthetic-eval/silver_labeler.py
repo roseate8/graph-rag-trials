@@ -9,19 +9,18 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from collections import defaultdict
+from tqdm import tqdm
 
-# Add vector-ingest to path for llm_utils
-vector_ingest_path = Path(__file__).parent.parent.parent / "vector-ingest" / "src"
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+vector_ingest_path = project_root / "vector-ingest" / "src"
 sys.path.insert(0, str(vector_ingest_path))
-
-# Add retrieval to path
-retrieval_path = Path(__file__).parent.parent.parent / "retrieval"
-sys.path.insert(0, str(retrieval_path))
 
 from chunking.processors.llm_utils import SecureAPIKeyManager
 from retrieval.retrieval import MilvusRetriever
-from .query_generator import Query
-from .utils import (
+from query_generator import Query
+from utils import (
     compute_token_f1, compute_token_f1_sentences,
     has_exact_match, normalize_text
 )
@@ -251,14 +250,19 @@ Output ONLY a single number (0, 1, 2, or 3). No explanation."""
             import openai
             client = openai.OpenAI(api_key=api_key)
             
-            response = client.chat.completions.create(
-                model=self.config.model_name,
-                messages=[
+            llm_params = self.config.get_llm_params({
+                "model": self.config.model_name,
+                "messages": [
                     {"role": "system", "content": "You are a relevance grading assistant. Output only a single digit."},
                     {"role": "user", "content": prompt}
-                ],
-                max_tokens=10
-            )
+                ]
+            })
+            # Override token limit for this specific call
+            if "max_completion_tokens" in llm_params:
+                llm_params["max_completion_tokens"] = 10
+            else:
+                llm_params["max_tokens"] = 10
+            response = client.chat.completions.create(**llm_params)
             
             response_text = response.choices[0].message.content.strip()
             

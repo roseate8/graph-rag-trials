@@ -10,14 +10,17 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple, Set
 from dataclasses import dataclass, asdict
 from collections import defaultdict
+from tqdm import tqdm
 
-# Add vector-ingest to path for llm_utils
-vector_ingest_path = Path(__file__).parent.parent.parent / "vector-ingest" / "src"
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+vector_ingest_path = project_root / "vector-ingest" / "src"
 sys.path.insert(0, str(vector_ingest_path))
 
 from chunking.processors.llm_utils import SecureAPIKeyManager
-from .fact_extractor import AtomicFact
-from .utils import normalize_text
+from fact_extractor import AtomicFact
+from utils import normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -118,14 +121,14 @@ Output ONLY valid JSON, no other text."""
             import openai
             client = openai.OpenAI(api_key=api_key)
             
-            response = client.chat.completions.create(
-                model=self.config.model_name,
-                messages=[
+            llm_params = self.config.get_llm_params({
+                "model": self.config.model_name,
+                "messages": [
                     {"role": "system", "content": "You are a question generation assistant. Output only valid JSON."},
                     {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.config.max_tokens
-            )
+                ]
+            })
+            response = client.chat.completions.create(**llm_params)
             
             response_text = response.choices[0].message.content.strip()
             
@@ -159,7 +162,7 @@ Output ONLY valid JSON, no other text."""
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response as JSON: {e}")
-            logger.debug(f"Response was: {response_text[:200]}")
+            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
             return []
         except Exception as e:
             logger.error(f"Error generating single-hop queries: {e}")
@@ -220,14 +223,14 @@ Output ONLY valid JSON, no other text."""
                 import openai
                 client = openai.OpenAI(api_key=api_key)
                 
-                response = client.chat.completions.create(
-                    model=self.config.model_name,
-                    messages=[
+                llm_params = self.config.get_llm_params({
+                    "model": self.config.model_name,
+                    "messages": [
                         {"role": "system", "content": "You are a multi-hop question generation assistant. Output only valid JSON."},
                         {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=self.config.max_tokens
-                )
+                    ]
+                })
+                response = client.chat.completions.create(**llm_params)
                 
                 response_text = response.choices[0].message.content.strip()
                 
@@ -337,19 +340,16 @@ Output ONLY valid JSON, no other text."""
         logger.info(f"Generating queries from {len(all_facts)} facts...")
         
         all_queries = []
-        
+
         # 1. Generate single-hop queries
         logger.info("Generating single-hop queries...")
         single_hop_count = 0
-        
-        for i, fact in enumerate(all_facts):
-            if i % 10 == 0:
-                logger.info(f"  Processing fact {i}/{len(all_facts)}...")
-            
+
+        for fact in tqdm(all_facts, desc="Generating single-hop queries", unit="fact"):
             queries = self.generate_single_hop(fact)
             all_queries.extend(queries)
             single_hop_count += len(queries)
-            
+
             # Stop if we have enough queries
             if len(all_queries) >= self.config.target_questions:
                 logger.info(f"Reached target of {self.config.target_questions} queries")

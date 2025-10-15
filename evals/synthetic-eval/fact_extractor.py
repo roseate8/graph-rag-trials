@@ -10,14 +10,17 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 
-# Add vector-ingest to path for llm_utils
-vector_ingest_path = Path(__file__).parent.parent.parent / "vector-ingest" / "src"
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+vector_ingest_path = project_root / "vector-ingest" / "src"
 sys.path.insert(0, str(vector_ingest_path))
 
 from chunking.processors.llm_utils import SecureAPIKeyManager
 
 # Import utils from current package
-from .utils import (
+import utils
+from utils import (
     extract_dates, extract_numbers, extract_currencies,
     find_answer_span, normalize_text
 )
@@ -107,23 +110,26 @@ class FactExtractor:
         return f"{chunk_id}_fact_{self.fact_counter}"
     
     def _extract_date_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract date facts using regex."""
+        """Extract date facts using regex - optimized."""
         facts = []
         dates = extract_dates(content)
         
-        for date in dates:
+        # Limit dates to avoid too many facts
+        for date in dates[:5]:  # Max 5 dates per chunk
             start, end = find_answer_span(date, content)
+            if start == -1:  # Skip if not found
+                continue
             
-            # Create context around the date
-            context_start = max(0, start - 50)
-            context_end = min(len(content), end + 50)
-            context = content[context_start:context_end]
+            # Optimized context extraction
+            context_start = max(0, start - 30)  # Reduced context size
+            context_end = min(len(content), end + 30)
+            context = content[context_start:context_end].strip()
             
             fact = AtomicFact(
                 fact_id=self._generate_fact_id(chunk_id),
                 chunk_id=chunk_id,
                 fact_type="date",
-                fact_text=f"Date mentioned: {date} (context: {context})",
+                fact_text=f"Date: {date}",  # Simplified fact text
                 answer_span=date,
                 answer_start=start,
                 answer_end=end,
@@ -135,26 +141,33 @@ class FactExtractor:
         return facts
     
     def _extract_number_facts(self, chunk_id: str, content: str) -> List[AtomicFact]:
-        """Extract numeric facts using regex."""
+        """Extract numeric facts using regex - optimized."""
         facts = []
         numbers = extract_numbers(content)
         
-        # Filter out very common numbers
-        significant_numbers = [n for n in numbers if self._is_significant_number(n)]
+        # Pre-filter and limit in one pass for efficiency
+        significant_numbers = []
+        for number in numbers:
+            if self._is_significant_number(number):
+                significant_numbers.append(number)
+                if len(significant_numbers) >= 5:  # Reduced limit
+                    break
         
-        for number in significant_numbers[:10]:  # Limit to avoid too many
+        for number in significant_numbers:
             start, end = find_answer_span(number, content)
+            if start == -1:
+                continue
             
-            # Get context
-            context_start = max(0, start - 50)
-            context_end = min(len(content), end + 50)
-            context = content[context_start:context_end]
+            # Optimized context extraction
+            context_start = max(0, start - 30)
+            context_end = min(len(content), end + 30)
+            context = content[context_start:context_end].strip()
             
             fact = AtomicFact(
                 fact_id=self._generate_fact_id(chunk_id),
                 chunk_id=chunk_id,
                 fact_type="number",
-                fact_text=f"Number: {number} (context: {context})",
+                fact_text=f"Number: {number}",
                 answer_span=number,
                 answer_start=start,
                 answer_end=end,
@@ -256,14 +269,14 @@ Extract 3-5 key facts. Output ONLY valid JSON, no other text."""
             import openai
             client = openai.OpenAI(api_key=api_key)
             
-            response = client.chat.completions.create(
-                model=self.config.model_name,
-                messages=[
+            llm_params = self.config.get_llm_params({
+                "model": self.config.model_name,
+                "messages": [
                     {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
                     {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.config.max_tokens
-            )
+                ]
+            })
+            response = client.chat.completions.create(**llm_params)
             
             response_text = response.choices[0].message.content.strip()
             
@@ -279,6 +292,16 @@ Extract 3-5 key facts. Output ONLY valid JSON, no other text."""
             facts = []
             for triple_data in triples_data:
                 answer_span = triple_data.get('answer_span', '')
+                # Skip if None or empty
+                if answer_span is None:
+                    continue
+                # Convert to string if needed
+                if isinstance(answer_span, (list, dict)):
+                    answer_span = json.dumps(answer_span)
+                elif not isinstance(answer_span, str):
+                    answer_span = str(answer_span)
+                if not answer_span:  # Skip empty values
+                    continue
                 start, end = find_answer_span(answer_span, content)
                 
                 fact = AtomicFact(
@@ -301,10 +324,10 @@ Extract 3-5 key facts. Output ONLY valid JSON, no other text."""
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response as JSON: {e}")
-            logger.debug(f"Response was: {response_text[:200]}")
+            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
             return []
         except Exception as e:
-            logger.error(f"Error extracting triples with LLM: {e}")
+            logger.error(f"Error extracting triples with LLM: {e}", exc_info=True)
             return []
     
     def _extract_key_values_llm(self, chunk_id: str, content: str) -> List[AtomicFact]:
@@ -354,14 +377,14 @@ Extract 3-5 key pairs. Output ONLY valid JSON, no other text."""
             import openai
             client = openai.OpenAI(api_key=api_key)
             
-            response = client.chat.completions.create(
-                model=self.config.model_name,
-                messages=[
+            llm_params = self.config.get_llm_params({
+                "model": self.config.model_name,
+                "messages": [
                     {"role": "system", "content": "You are a data extraction assistant. Output only valid JSON."},
                     {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.config.max_tokens
-            )
+                ]
+            })
+            response = client.chat.completions.create(**llm_params)
             
             response_text = response.choices[0].message.content.strip()
             
@@ -376,6 +399,16 @@ Extract 3-5 key pairs. Output ONLY valid JSON, no other text."""
             facts = []
             for kv in kv_data:
                 value = kv.get('value', '')
+                # Skip if value is None or empty
+                if value is None:
+                    continue
+                # Convert value to string if it's not already
+                if isinstance(value, (list, dict)):
+                    value = json.dumps(value)
+                elif not isinstance(value, str):
+                    value = str(value)
+                if not value:  # Skip empty values
+                    continue
                 start, end = find_answer_span(value, content)
                 
                 fact = AtomicFact(
@@ -399,6 +432,7 @@ Extract 3-5 key pairs. Output ONLY valid JSON, no other text."""
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response as JSON: {e}")
+            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
             return []
         except Exception as e:
             logger.error(f"Error extracting key-values with LLM: {e}")

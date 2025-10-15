@@ -1,16 +1,35 @@
 """
 Utility functions for synthetic evaluation dataset generation.
+Optimized for performance with compiled regex patterns and caching.
 """
 
 import re
 import string
 from typing import List, Set, Tuple
 from collections import Counter
+from functools import lru_cache
+
+# Pre-compiled regex patterns for better performance
+DATE_PATTERNS = [
+    re.compile(r'\b\d{4}-\d{2}-\d{2}\b'),  # YYYY-MM-DD
+    re.compile(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b'),  # MM/DD/YYYY or DD/MM/YYYY
+    re.compile(r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b', re.IGNORECASE),
+    re.compile(r'\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b', re.IGNORECASE),
+    re.compile(r'\b(?:Q[1-4]|FY)\s*\d{4}\b', re.IGNORECASE),
+]
+
+NUMBER_PATTERN = re.compile(r'[$€£¥]?\s*\d+[.,]?\d*\s*[kmbt%]?', re.IGNORECASE)
+CURRENCY_PATTERN = re.compile(r'[$€£¥]\s*\d+[.,]?\d*\s*[kmbt]?', re.IGNORECASE)
+MULTIPLIER_PATTERN = re.compile(r'([\d.]+)\s*([kmbt])', re.IGNORECASE)
+
+# Cache for text normalization
+_normalize_cache = {}
 
 
+@lru_cache(maxsize=1000)
 def normalize_text(text: str) -> str:
     """
-    Normalize text for comparison.
+    Normalize text for comparison with caching.
     
     Args:
         text: Input text
@@ -18,16 +37,14 @@ def normalize_text(text: str) -> str:
     Returns:
         Normalized text (lowercase, no punctuation, stripped)
     """
-    # Lowercase
-    text = text.lower()
+    if not text:
+        return ""
     
-    # Remove punctuation
-    text = text.translate(str.maketrans('', '', string.punctuation))
+    # Lowercase and remove punctuation in one pass
+    text = text.lower().translate(str.maketrans('', '', string.punctuation))
     
     # Normalize whitespace
-    text = ' '.join(text.split())
-    
-    return text
+    return ' '.join(text.split())
 
 
 def normalize_number(num_str: str) -> float:
@@ -225,7 +242,7 @@ def is_number(text: str) -> bool:
 
 def extract_dates(text: str) -> List[str]:
     """
-    Extract date patterns from text using regex.
+    Extract date patterns from text using pre-compiled regex.
     
     Args:
         text: Input text
@@ -233,24 +250,27 @@ def extract_dates(text: str) -> List[str]:
     Returns:
         List of date strings
     """
-    date_patterns = [
-        r'\b\d{4}-\d{2}-\d{2}\b',  # YYYY-MM-DD
-        r'\b\d{1,2}/\d{1,2}/\d{2,4}\b',  # MM/DD/YYYY or DD/MM/YYYY
-        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b',  # Month DD, YYYY
-        r'\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b',  # DD Month YYYY
-        r'\b(?:Q[1-4]|FY)\s*\d{4}\b',  # Q1 2024, FY2024
-    ]
+    if not text:
+        return []
     
     dates = []
-    for pattern in date_patterns:
-        dates.extend(re.findall(pattern, text, re.IGNORECASE))
+    for pattern in DATE_PATTERNS:
+        dates.extend(pattern.findall(text))
     
-    return dates
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_dates = []
+    for date in dates:
+        if date not in seen:
+            seen.add(date)
+            unique_dates.append(date)
+    
+    return unique_dates
 
 
 def extract_numbers(text: str) -> List[str]:
     """
-    Extract number patterns from text using regex.
+    Extract number patterns from text using pre-compiled regex.
     
     Args:
         text: Input text
@@ -258,20 +278,18 @@ def extract_numbers(text: str) -> List[str]:
     Returns:
         List of number strings
     """
-    # Pattern for numbers with optional currency and suffixes
-    number_pattern = r'[$€£¥]?\s*\d+[.,]?\d*\s*[kmbt%]?'
+    if not text:
+        return []
     
-    numbers = re.findall(number_pattern, text, re.IGNORECASE)
+    numbers = NUMBER_PATTERN.findall(text)
     
-    # Filter out very short matches
-    numbers = [n.strip() for n in numbers if len(n.strip()) > 1]
-    
-    return numbers
+    # Filter and clean in one pass
+    return [n.strip() for n in numbers if len(n.strip()) > 1]
 
 
 def extract_currencies(text: str) -> List[str]:
     """
-    Extract currency amounts from text.
+    Extract currency amounts from text using pre-compiled regex.
     
     Args:
         text: Input text
@@ -279,11 +297,10 @@ def extract_currencies(text: str) -> List[str]:
     Returns:
         List of currency strings
     """
-    currency_pattern = r'[$€£¥]\s*\d+[.,]?\d*\s*[kmbt]?'
+    if not text:
+        return []
     
-    currencies = re.findall(currency_pattern, text, re.IGNORECASE)
-    
-    return currencies
+    return CURRENCY_PATTERN.findall(text)
 
 
 def compute_jaccard_similarity(set1: Set[str], set2: Set[str]) -> float:
