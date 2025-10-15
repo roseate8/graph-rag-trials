@@ -179,84 +179,87 @@ class FactExtractor:
     
     async def _extract_all_facts_llm_async(self, chunk_id: str, content: str) -> List[AtomicFact]:
         """
-        Extract ALL fact types (dates, numbers, currencies, triples, key-values) in a single LLM call.
+        Extract semantic propositions (self-contained claims) from business documents.
 
         Args:
             chunk_id: Chunk identifier
             content: Chunk content
 
         Returns:
-            List of AtomicFact objects for all fact types
+            List of AtomicFact objects with semantic propositions
         """
         # Limit content length for LLM
         max_content_len = 2000
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
 
-        prompt = f"""Extract ALL types of business-relevant atomic facts from this text:
+        prompt = f"""Extract self-contained semantic propositions (claims) from this business document. Each proposition should be a complete, meaningful statement that can stand alone and be questioned.
 
-1. **Dates**: Any dates, quarters, years (e.g., "March 15, 2024", "Q1 2024", "FY 2023")
-2. **Numbers**: Significant business numbers (revenue, employees, percentages, etc.)
-3. **Currencies**: Financial amounts with currency symbols (e.g., "$400M", "€1.2B")
-4. **Triples**: Subject-Relation-Object relationships (e.g., "Company X acquired Company Y")
-5. **Key-Values**: Business metrics, KPIs, attributes (e.g., "Revenue: $400M")
+**Proposition Types:**
 
-CRITICAL RULES:
+1. **factual_claim**: Complete semantic statements about entities, metrics, or events
+   - "Elastic N.V. acquired Build Security Ltd. in Q1 2024"
+   - "The company's Q1 2024 revenue was $400 million"
+   - "EBITDA margin improved to 25% in Q1 2024"
+   - "More than 50% of Fortune 500 companies use Elastic"
+
+2. **temporal_event**: Events anchored to specific times
+   - "The fiscal quarter ended on January 31, 2024"
+   - "The Form 10-K was filed on March 15, 2024"
+   - "The acquisition closed in Q1 2024"
+
+3. **comparative_statement**: Comparisons, changes, or trends over time
+   - "Deferred revenue increased 24% year-over-year"
+   - "Employee count grew from 1,200 to 1,500 in FY2024"
+   - "Revenue growth accelerated compared to prior quarter"
+
+**CRITICAL RULES:**
 - Extract ONLY facts explicitly stated in the text
-- Do NOT extract HTML tags, CSS classes, JavaScript code, or technical IDs
-- Do NOT extract meaningless numbers from code (offsetWidth, colspan, etc.)
-- Focus on business-relevant information only
-- Extract 5-12 facts depending on content richness
-- Do NOT make up facts - return fewer if content lacks business information
+- Each fact MUST be a complete, self-contained statement with full context
+- Do NOT extract: HTML tags, CSS classes, JavaScript code, technical IDs, colspan/rowspan, isolated numbers without context
+- Focus on business substance: financial metrics, corporate events, strategic initiatives, market position
+- Entities MUST be semantic (company names, product names, metric names, time periods) - NOT bare numbers
+- Extract 5-10 propositions depending on content richness
+- If content is primarily HTML/CSS/code, return EMPTY array []
 
-Text: {content}
+**Text to analyze:**
+{content}
 
-For each fact, provide:
-- fact_type: "date", "number", "currency", "triple", or "key_value"
-- answer_span: EXACT text from document (must be verbatim)
-- entities: main entities mentioned (companies, products, dates, etc.)
-- fact_text: natural language description
-- For triples: [subject, relation, object]
-- For key-values: key and value
-
-Output JSON format:
+**Output format (JSON array):**
 [
   {{
-    "fact_type": "date",
-    "answer_span": "March 15, 2024",
-    "entities": ["2024", "March"],
-    "fact_text": "The event occurred on March 15, 2024"
-  }},
-  {{
-    "fact_type": "currency", 
-    "answer_span": "$400M",
-    "entities": ["Q1", "2024"],
-    "fact_text": "Q1 2024 revenue was $400M"
-  }},
-  {{
-    "fact_type": "number",
-    "answer_span": "1,500",
-    "entities": ["employees", "company"],
-    "fact_text": "The company has 1,500 employees"
-  }},
-  {{
-    "fact_type": "triple",
-    "triple": ["Elastic N.V.", "acquired", "Build Security Ltd."],
+    "fact_type": "factual_claim",
+    "fact_text": "Elastic N.V. acquired Build Security Ltd. in December 2021",
     "answer_span": "Build Security Ltd.",
-    "entities": ["Elastic N.V.", "Build Security Ltd."],
-    "fact_text": "Elastic N.V. acquired Build Security Ltd."
+    "entities": ["Elastic N.V.", "Build Security Ltd.", "December 2021", "acquisition"]
   }},
   {{
-    "fact_type": "key_value",
-    "key": "EBITDA margin",
-    "value": "25%",
-    "answer_span": "25%",
-    "entities": ["Q1", "2024"],
-    "fact_text": "Q1 2024 EBITDA margin was 25%"
+    "fact_type": "factual_claim",
+    "fact_text": "Q1 2024 total revenue was $400 million, representing 20% year-over-year growth",
+    "answer_span": "$400 million",
+    "entities": ["Q1 2024", "total revenue", "$400 million", "20% growth"]
+  }},
+  {{
+    "fact_type": "temporal_event",
+    "fact_text": "The fiscal quarter ended on January 31, 2024",
+    "answer_span": "January 31, 2024",
+    "entities": ["fiscal quarter", "January 31, 2024"]
+  }},
+  {{
+    "fact_type": "comparative_statement",
+    "fact_text": "Deferred revenue increased 24% year-over-year to $536 million",
+    "answer_span": "24%",
+    "entities": ["deferred revenue", "24% increase", "year-over-year", "$536 million"]
   }}
 ]
 
-Extract 5-12 business facts. Output ONLY valid JSON."""
+**Required for each fact:**
+- fact_type: "factual_claim", "temporal_event", or "comparative_statement"
+- fact_text: Full semantic proposition with complete context (minimum 10 words)
+- answer_span: The key piece of information that would answer a question (verbatim from text)
+- entities: Semantic entities - company names, products, metrics, time periods (NOT bare numbers like "200" or "4.2")
+
+Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Output ONLY valid JSON."""
 
         try:
             # Use shared async client
