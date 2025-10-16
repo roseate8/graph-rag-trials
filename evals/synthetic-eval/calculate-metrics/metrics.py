@@ -206,18 +206,21 @@ class IRMetrics:
         """
         # Calculate DCG@K for actual ranking
         dcg = IRMetrics.dcg_at_k(retrieved_ids, relevance_scores, k)
-        
-        # Calculate IDCG@K (ideal ranking - sort by relevance desc)
-        sorted_relevances = sorted(relevance_scores.values(), reverse=True)
-        ideal_dcg = 0.0
-        for rank, relevance in enumerate(sorted_relevances[:k], start=1):
-            ideal_dcg += relevance / math.log2(rank + 1)
-        
-        # Avoid division by zero
-        if ideal_dcg == 0.0:
+
+        # Early exit if DCG is 0 (no need to calculate IDCG)
+        if dcg == 0.0:
             return 0.0
-        
-        return dcg / ideal_dcg
+
+        # Calculate IDCG@K (ideal ranking - sort by relevance desc)
+        # Optimized: use generator expression instead of loop
+        sorted_relevances = sorted(relevance_scores.values(), reverse=True)
+        ideal_dcg = sum(
+            rel / math.log2(rank + 1)
+            for rank, rel in enumerate(sorted_relevances[:k], start=1)
+        )
+
+        # Avoid division by zero
+        return dcg / ideal_dcg if ideal_dcg > 0.0 else 0.0
     
     @staticmethod
     def calculate_all_metrics(
@@ -225,7 +228,7 @@ class IRMetrics:
         retrieved_ids: List[str],
         relevance_scores: Dict[str, int],
         k_values: List[int]
-    ) -> Dict[str, any]:
+    ) -> Dict:
         """
         Calculate all metrics for a single query across multiple K values.
         
@@ -281,22 +284,19 @@ class IRMetrics:
             'num_queries': len(all_query_metrics)
         }
         
-        # Aggregate each metric
-        metric_keys = []
-        for k in k_values:
-            k_str = f"@{k}"
-            metric_keys.extend([
-                f"recall{k_str}",
-                f"precision{k_str}",
-                f"ndcg{k_str}",
-                f"hits{k_str}"
-            ])
-        metric_keys.extend(['average_precision', 'reciprocal_rank'])
-        
+        # Optimized: build metric keys with list comprehension
+        metric_keys = [
+            f"{metric}@{k}"
+            for k in k_values
+            for metric in ['recall', 'precision', 'ndcg', 'hits']
+        ] + ['average_precision', 'reciprocal_rank']
+
+        # Optimized: single-pass aggregation using generator
+        num_queries = len(all_query_metrics)
         for metric_key in metric_keys:
-            values = [m[metric_key] for m in all_query_metrics if metric_key in m]
-            if values:
-                aggregated[metric_key] = sum(values) / len(values)
+            # Use generator to avoid intermediate list
+            total = sum(m.get(metric_key, 0.0) for m in all_query_metrics)
+            aggregated[metric_key] = total / num_queries
         
         # Add MAP and MRR explicitly
         aggregated['MAP'] = aggregated.get('average_precision', 0.0)
