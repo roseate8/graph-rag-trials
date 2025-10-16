@@ -279,19 +279,100 @@ max_concurrent = 10
 
 ## Advanced Usage
 
+### CLI Arguments (NEW!)
+
+The evaluation system now supports comprehensive CLI arguments for flexible experimentation:
+
+```bash
+# Show all options
+python main.py --help
+
+# Quick test with 10 queries
+python main.py --num-queries 10
+
+# Filter by query type
+python main.py --query-type single_hop
+python main.py --query-type multi_hop
+
+# Custom K values
+python main.py --k-values 1 5 10 20
+
+# Disable re-ranking (faster)
+python main.py --no-reranking
+
+# High concurrency
+python main.py --batch-size 25 --max-concurrent 25
+
+# Custom output directory
+python main.py --output-dir results_experiment_1
+
+# Verbose logging
+python main.py --verbose
+
+# Dry run (validate without running)
+python main.py --dry-run
+
+# Pagination (process in batches)
+python main.py --skip-queries 50 --num-queries 50
+
+# Specific query IDs
+python main.py --query-ids q0001 q0002 q0003
+```
+
+### Common Workflows
+
+**A/B Testing Re-ranking:**
+```bash
+python main.py -o results_with_rerank
+python main.py --no-reranking -o results_no_rerank
+```
+
+**Single vs Multi-hop Comparison:**
+```bash
+python main.py --query-type single_hop -o results_single
+python main.py --query-type multi_hop -o results_multi
+```
+
+**Fast Iteration (Development):**
+```bash
+python main.py -n 20 --no-reranking -b 20 -mc 20
+```
+
+**Production Evaluation:**
+```bash
+python main.py --batch-size 10 --max-concurrent 10
+```
+
 ### Custom K Values
 
-Edit `config.py`:
+Via CLI:
+```bash
+python main.py --k-values 1 5 10 20 50
+```
+
+Or edit `config.py`:
 ```python
 k_values = [1, 5, 10, 20, 50]  # Focus on specific K values
 ```
 
 ### Query Filtering
 
-Modify `evaluator.py` to filter queries:
+Via CLI (recommended):
+```bash
+# First 50 queries only
+python main.py --num-queries 50
+
+# Skip first 100, evaluate next 50
+python main.py --skip-queries 100 --num-queries 50
+
+# Single-hop queries only
+python main.py --query-type single_hop
+```
+
+Or modify `evaluator.py`:
 ```python
 # Only evaluate single-hop queries
-self.queries = [q for q in self.queries 
+self.queries = [q for q in self.queries
                 if q['metadata']['query_type'] == 'single_hop']
 ```
 
