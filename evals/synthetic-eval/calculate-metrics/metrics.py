@@ -1,13 +1,13 @@
 """
 Metrics calculation for information retrieval evaluation.
 
+Optimized for performance with O(n) algorithms and minimal redundancy.
 Supports graded relevance (0-3) for NDCG and binary relevance for other metrics.
 """
 
 import math
 import logging
-from typing import List, Dict, Set, Tuple
-from collections import defaultdict
+from typing import List, Dict, Set
 
 logger = logging.getLogger(__name__)
 
@@ -19,71 +19,72 @@ class IRMetrics:
     def recall_at_k(retrieved_ids: List[str], relevant_ids: Set[str], k: int) -> float:
         """
         Calculate Recall@K: relevant_retrieved@K / total_relevant
-        
+        Time: O(min(k, len(retrieved_ids)))
+
         Args:
             retrieved_ids: List of retrieved document IDs (in rank order)
             relevant_ids: Set of relevant document IDs (any relevance > 0)
             k: Cut-off rank
-            
+
         Returns:
             Recall@K score [0, 1]
         """
         if not relevant_ids:
             return 0.0
-        
-        retrieved_at_k = set(retrieved_ids[:k])
-        relevant_retrieved = retrieved_at_k & relevant_ids
-        
-        return len(relevant_retrieved) / len(relevant_ids)
+
+        # Optimized: count matches in single pass, max k iterations
+        matches = sum(1 for doc_id in retrieved_ids[:k] if doc_id in relevant_ids)
+        return matches / len(relevant_ids)
     
     @staticmethod
     def precision_at_k(retrieved_ids: List[str], relevant_ids: Set[str], k: int) -> float:
         """
         Calculate Precision@K: relevant_retrieved@K / K
-        
+        Time: O(min(k, len(retrieved_ids)))
+
         Args:
             retrieved_ids: List of retrieved document IDs (in rank order)
             relevant_ids: Set of relevant document IDs (any relevance > 0)
             k: Cut-off rank
-            
+
         Returns:
             Precision@K score [0, 1]
         """
         if k == 0:
             return 0.0
-        
-        retrieved_at_k = set(retrieved_ids[:k])
-        relevant_retrieved = retrieved_at_k & relevant_ids
-        
-        return len(relevant_retrieved) / k
+
+        # Optimized: count matches in single pass
+        matches = sum(1 for doc_id in retrieved_ids[:k] if doc_id in relevant_ids)
+        return matches / k
     
     @staticmethod
     def average_precision(retrieved_ids: List[str], relevant_ids: Set[str]) -> float:
         """
         Calculate Average Precision (AP) for a single query.
-        
+        Time: O(n) where n = len(retrieved_ids)
+
         AP = (1/total_relevant) * Σ(Precision@k * rel(k))
         where rel(k) = 1 if doc at rank k is relevant, 0 otherwise
-        
+
         Args:
             retrieved_ids: List of retrieved document IDs (in rank order)
             relevant_ids: Set of relevant document IDs
-            
+
         Returns:
             Average Precision score [0, 1]
         """
         if not relevant_ids:
             return 0.0
-        
+
         precision_sum = 0.0
         relevant_count = 0
-        
+
+        # Single pass: O(n)
         for rank, doc_id in enumerate(retrieved_ids, start=1):
             if doc_id in relevant_ids:
                 relevant_count += 1
-                precision_at_rank = relevant_count / rank
-                precision_sum += precision_at_rank
-        
+                precision_sum += relevant_count / rank
+
         return precision_sum / len(relevant_ids)
     
     @staticmethod
@@ -111,18 +112,19 @@ class IRMetrics:
     def reciprocal_rank(retrieved_ids: List[str], relevant_ids: Set[str]) -> float:
         """
         Calculate Reciprocal Rank (RR) - 1 / rank_of_first_relevant.
-        
+        Time: O(n) worst case, O(1) best case
+
         Args:
             retrieved_ids: List of retrieved document IDs (in rank order)
             relevant_ids: Set of relevant document IDs
-            
+
         Returns:
             RR score [0, 1]
         """
+        # Early exit optimization
         for rank, doc_id in enumerate(retrieved_ids, start=1):
             if doc_id in relevant_ids:
                 return 1.0 / rank
-        
         return 0.0
     
     @staticmethod
@@ -150,17 +152,18 @@ class IRMetrics:
     def hits_at_k(retrieved_ids: List[str], relevant_ids: Set[str], k: int) -> float:
         """
         Calculate Hits@K - binary indicator if ANY relevant doc in top-K.
-        
+        Time: O(min(k, len(retrieved_ids)))
+
         Args:
             retrieved_ids: List of retrieved document IDs (in rank order)
             relevant_ids: Set of relevant document IDs
             k: Cut-off rank
-            
+
         Returns:
             1.0 if hit, 0.0 otherwise
         """
-        retrieved_at_k = set(retrieved_ids[:k])
-        return 1.0 if (retrieved_at_k & relevant_ids) else 0.0
+        # Early exit: stop at first match
+        return 1.0 if any(doc_id in relevant_ids for doc_id in retrieved_ids[:k]) else 0.0
     
     @staticmethod
     def dcg_at_k(retrieved_ids: List[str], relevance_scores: Dict[str, int], k: int) -> float:
