@@ -210,8 +210,7 @@ def create_config_from_args(args) -> EvalConfig:
     # This maintains 100% dependency on retrieval/core.py
     config.rag_system_params['collection_name'] = args.collection
     config.rag_system_params['embedding_model'] = args.embedding_model
-    config.rag_system_params['enable_reranking'] = not args.no_reranking
-    config.rag_system_params['enable_query_decomposition'] = args.enable_decomposition
+    # Re-ranking and query decomposition always enabled (set in config.py defaults)
 
     # Update evaluation-specific parameters
     config.batch_size = args.batch_size
