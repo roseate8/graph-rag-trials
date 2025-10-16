@@ -4,7 +4,7 @@ Optimized with efficient defaults and validation.
 """
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict, Any, Optional
 
 
 @dataclass
@@ -16,6 +16,26 @@ class EvalConfig:
     embedding_model: str = "BAAI/bge-m3"
     milvus_profile: str = "production"
     enable_reranking: bool = True
+    
+    # Re-ranking configuration (passed to RAGSystem)
+    retrieval_multiplier: int = 10  # Multiplier for initial retrieval when re-ranking enabled
+    reranker_config: Optional[Dict[str, Any]] = None  # Custom re-ranker configuration
+    
+    # Query decomposition configuration
+    enable_query_decomposition: bool = False  # Enable multi-query retrieval with fusion
+    max_sub_queries: int = 5  # Maximum number of sub-queries to generate
+    fusion_k_constant: int = 60  # K constant for reciprocal rank fusion
+    
+    # Context formatting configuration
+    max_context_tokens: int = 4000  # Maximum tokens for context
+    include_scores: bool = False  # Include similarity scores in formatted context
+    
+    # LLM configuration (for full RAG pipeline, but not needed for evaluation)
+    llm_type: str = "mock"  # Use mock LLM for evaluation (no actual generation needed)
+    llm_model: str = "gpt-4o-mini"  # Model name (not used with mock)
+    
+    # History configuration (disabled for evaluation)
+    enable_history: bool = False  # Disable conversation history for evaluation
 
     # Evaluation K values - Use field() for mutable defaults
     # IMPORTANT: Max K limited to 50 to avoid Milvus ef parameter issues (ef=128 in milvus_config)

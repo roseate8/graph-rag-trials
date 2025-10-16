@@ -1,6 +1,10 @@
 """
-Retriever integration for evaluation - uses existing retrieval system.
+Retriever integration for evaluation - uses existing retrieval system via RAGSystem.
 Optimized for async batch processing without caching.
+
+This module wraps the main RAGSystem from retrieval/core.py, ensuring that any
+changes to the retrieval pipeline (query decomposition, re-ranking, etc.) automatically
+flow into evaluation without requiring code changes here.
 """
 
 import sys
@@ -15,7 +19,7 @@ from tqdm.asyncio import tqdm as async_tqdm
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from retrieval.retrieval import MilvusRetriever
+from retrieval.core import RAGSystem
 
 logger = logging.getLogger(__name__)
 
@@ -33,43 +37,62 @@ class RetrievalResult:
 
 class EvalRetriever:
     """
-    Wrapper around existing MilvusRetriever for batch async evaluation.
+    Wrapper around RAGSystem for batch async evaluation.
     
-    Integrates with your existing retrieval system without modification.
+    Uses the complete retrieval pipeline from retrieval/core.py, ensuring
+    all features (query decomposition, re-ranking, etc.) are automatically included.
     """
     
     def __init__(self, config):
         """
-        Initialize retriever with existing system.
+        Initialize retriever with RAGSystem.
         
         Args:
             config: EvalConfig instance
         """
         self.config = config
-        self.retriever = None
+        self.rag_system = None
         
-        logger.info(f"Initializing EvalRetriever with:")
+        logger.info(f"Initializing EvalRetriever with RAGSystem:")
         logger.info(f"  Collection: {config.collection_name}")
         logger.info(f"  Embedding: {config.embedding_model}")
         logger.info(f"  Re-ranking: {config.enable_reranking}")
+        logger.info(f"  Query decomposition: {config.enable_query_decomposition}")
     
     def connect(self) -> bool:
-        """Connect to Milvus using existing retriever."""
+        """Connect to Milvus using RAGSystem."""
         try:
-            self.retriever = MilvusRetriever(
+            # Initialize RAGSystem with all config parameters
+            self.rag_system = RAGSystem(
+                # Retriever parameters
                 embedding_model=self.config.embedding_model,
-                milvus_profile=self.config.milvus_profile,
                 collection_name=self.config.collection_name,
-                enable_reranking=self.config.enable_reranking
+                # Re-ranking parameters
+                enable_reranking=self.config.enable_reranking,
+                reranker_config=self.config.reranker_config,
+                retrieval_multiplier=self.config.retrieval_multiplier,
+                # Query decomposition parameters
+                enable_query_decomposition=self.config.enable_query_decomposition,
+                max_sub_queries=self.config.max_sub_queries,
+                fusion_k_constant=self.config.fusion_k_constant,
+                # Context parameters
+                max_context_tokens=self.config.max_context_tokens,
+                include_scores=self.config.include_scores,
+                # LLM parameters (mock for evaluation)
+                llm_type=self.config.llm_type,
+                llm_model=self.config.llm_model,
+                # History disabled for evaluation
+                enable_history=self.config.enable_history
             )
             
-            success = self.retriever.connect()
+            success = self.rag_system.connect()
             if success:
-                logger.info("✓ Connected to Milvus")
+                logger.info("✓ Connected to Milvus via RAGSystem")
                 
                 # Get collection stats
-                stats = self.retriever.get_collection_stats()
-                logger.info(f"  Total documents: {stats.get('num_entities', 'N/A')}")
+                stats = self.rag_system.get_system_stats()
+                retriever_stats = stats.get('retriever_stats', {})
+                logger.info(f"  Total documents: {retriever_stats.get('num_entities', 'N/A')}")
             else:
                 logger.error("✗ Failed to connect to Milvus")
             
@@ -80,13 +103,18 @@ class EvalRetriever:
     
     def disconnect(self):
         """Disconnect from Milvus."""
-        if self.retriever:
-            self.retriever.disconnect()
+        if self.rag_system:
+            self.rag_system.disconnect()
             logger.info("Disconnected from Milvus")
     
     async def retrieve_single(self, query: Dict[str, Any], top_k: int) -> RetrievalResult:
         """
-        Retrieve for a single query using existing retrieval system.
+        Retrieve for a single query using RAGSystem.
+        
+        This method uses the complete RAG pipeline including:
+        - Query decomposition (if enabled)
+        - Multi-query retrieval with fusion (if decomposition enabled)
+        - Re-ranking (if enabled)
         
         Args:
             query: Query dict with _id, text, metadata
@@ -100,25 +128,30 @@ class EvalRetriever:
         query_type = query.get('metadata', {}).get('query_type', 'unknown')
         
         try:
-            # Call existing retrieval system
-            # Note: retriever.retrieve is synchronous, wrap in executor for async
+            # Call RAGSystem.query which handles the complete retrieval pipeline
+            # Note: RAGSystem.query is synchronous, wrap in executor for async
             loop = asyncio.get_event_loop()
-            results = await loop.run_in_executor(
+            rag_result = await loop.run_in_executor(
                 None,
-                self.retriever.retrieve,
+                self.rag_system.query,
                 query_text,
                 top_k,
                 0.0  # min_similarity (retrieve all top-k)
             )
             
-            # Convert to evaluation format - FIX: use similarity_score not similarity
+            # Convert RAGResult.retrieved_chunks to evaluation format
+            # Prefer rerank_score when available (from re-ranking), otherwise use similarity_score
             retrieved_docs = [
                 {
-                    'chunk_id': result.chunk_id,
-                    'score': result.similarity_score,
-                    'rank': rank
+                    'chunk_id': chunk.chunk_id,
+                    'score': chunk.rerank_score if chunk.rerank_score is not None else chunk.similarity_score,
+                    'rank': rank,
+                    # Include additional metadata for analysis
+                    'similarity_score': chunk.similarity_score,
+                    'rerank_score': chunk.rerank_score,
+                    'rerank_probability': chunk.rerank_probability
                 }
-                for rank, result in enumerate(results, start=1)
+                for rank, chunk in enumerate(rag_result.retrieved_chunks, start=1)
             ]
             
             return RetrievalResult(
@@ -164,6 +197,7 @@ class EvalRetriever:
         noisy_loggers = [
             'embeddings.milvus_store',
             'retrieval.retrieval',
+            'retrieval.core',  # Added for RAGSystem
             'pymilvus',
             'handler'
         ]
