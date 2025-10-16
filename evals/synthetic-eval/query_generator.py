@@ -21,6 +21,7 @@ sys.path.insert(0, str(vector_ingest_path))
 from chunking.processors.llm_utils import SecureAPIKeyManager
 from fact_extractor import AtomicFact
 from utils import normalize_text
+from llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 

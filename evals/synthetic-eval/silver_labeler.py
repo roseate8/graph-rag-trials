@@ -65,44 +65,43 @@ class SilverLabeler:
     def label_all_chunks(
         self,
         query: Query,
-        all_chunks: List[Dict[str, Any]]
+        all_chunks: List[Dict[str, Any]],
+        chunk_to_doc: Dict[str, str]
     ) -> Dict[str, int]:
         """
         Assign relevance labels to all chunks for a query.
-        
+
         Args:
             query: Query object
             all_chunks: List of all chunks
-            
+            chunk_to_doc: Pre-built mapping of chunk_id -> doc_id
+
         Returns:
             Dictionary mapping chunk_id -> relevance_label (0-3)
         """
         logger.debug(f"Labeling chunks for query {query.query_id}")
-        
+
         labels = {}
-        
-        # Build doc_id lookup
-        chunk_to_doc = {chunk['chunk_id']: chunk.get('doc_id', '') for chunk in all_chunks}
-        
+
         for chunk in all_chunks:
             chunk_id = chunk.get('chunk_id', '')
-            
+
             # Gold chunks always get rel=3
             if chunk_id in query.gold_chunk_ids:
                 labels[chunk_id] = 3
                 continue
-            
+
             # Compute relevance for non-gold chunks
             relevance = self._compute_relevance(query, chunk, chunk_to_doc)
             labels[chunk_id] = relevance
-        
+
         # Log label distribution
         label_counts = defaultdict(int)
         for label in labels.values():
             label_counts[label] += 1
-        
+
         logger.debug(f"Query {query.query_id} label distribution: {dict(label_counts)}")
-        
+
         return labels
     
     def _compute_relevance(
@@ -288,12 +287,12 @@ Output ONLY a single number (0, 1, 2, or 3). No explanation."""
     ) -> Dict[str, Dict[str, int]]:
         """
         Label all chunks for multiple queries in batches.
-        
+
         Args:
             queries: List of Query objects
             all_chunks: List of all chunks
             batch_size: Batch size (default from config)
-            
+
         Returns:
             Dictionary mapping query_id -> {chunk_id: relevance_label}
         """
@@ -302,16 +301,20 @@ Output ONLY a single number (0, 1, 2, or 3). No explanation."""
 
         logger.info(f"Batch labeling {len(queries)} queries...")
 
+        # Build chunk_to_doc mapping ONCE for all queries (optimization)
+        logger.info(f"Building chunk-to-doc mapping for {len(all_chunks)} chunks...")
+        chunk_to_doc = {chunk['chunk_id']: chunk.get('doc_id', '') for chunk in all_chunks}
+
         all_qrels = {}
 
         pbar = tqdm(queries, desc="Labeling queries", unit="query", ncols=100)
         for query in pbar:
-            qrels = self.label_all_chunks(query, all_chunks)
+            qrels = self.label_all_chunks(query, all_chunks, chunk_to_doc)
             all_qrels[query.query_id] = qrels
         pbar.close()
 
         logger.info(f"Completed labeling for {len(queries)} queries")
-        
+
         return all_qrels
     
     def compute_label_statistics(

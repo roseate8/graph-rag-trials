@@ -23,6 +23,7 @@ sys.path.insert(0, str(vector_ingest_path))
 
 from chunking.processors.llm_utils import SecureAPIKeyManager
 from utils import find_answer_span
+from llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -71,19 +72,10 @@ class FactExtractor:
             llm_manager: SecureAPIKeyManager for LLM calls
         """
         self.config = config
-        self.llm_manager = llm_manager
+        self.llm_client = LLMClient(llm_manager, config)
         self.fact_counter = 0
-        self._async_client = None
 
         logger.info(f"Initialized FactExtractor (semantic propositions) with model: {config.model_name}")
-
-    async def _get_async_client(self):
-        """Get or create async OpenAI client (reused across requests)."""
-        if self._async_client is None:
-            import openai
-            api_key = self.llm_manager.get_api_key()
-            self._async_client = openai.AsyncOpenAI(api_key=api_key)
-        return self._async_client
 
     def extract_facts_batch(
         self,
@@ -159,26 +151,15 @@ class FactExtractor:
         """
         Synchronous fact extraction (for single-chunk use cases).
 
+        Wraps async implementation with asyncio.run() to avoid code duplication.
+
         Args:
             chunk: Chunk dictionary with 'chunk_id' and 'content'
 
         Returns:
             List of AtomicFact objects
         """
-        chunk_id = chunk.get('chunk_id', '')
-        content = chunk.get('content', '')
-
-        if not content:
-            logger.warning(f"Empty content for chunk {chunk_id}")
-            return []
-
-        logger.debug(f"Extracting semantic propositions from chunk {chunk_id}")
-
-        # Single LLM call for all proposition types
-        facts = self._extract_propositions_llm_sync(chunk_id, content)
-
-        logger.debug(f"Extracted {len(facts)} propositions from chunk {chunk_id}")
-        return facts
+        return asyncio.run(self._extract_facts_async(chunk))
 
     def _generate_fact_id(self, chunk_id: str) -> str:
         """Generate unique fact ID."""
@@ -316,12 +297,8 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
         Returns:
             List of validated AtomicFact objects
         """
-        # Clean JSON markers if present
-        if response_text.startswith("```"):
-            response_text = re.sub(r'```json?\n?', '', response_text)
-            response_text = re.sub(r'```\n?$', '', response_text)
-
-        facts_data = json.loads(response_text)
+        # Use centralized JSON parsing
+        facts_data = self.llm_client.parse_json_response(response_text)
 
         # Convert to AtomicFact objects with quality filtering
         facts = []
@@ -400,77 +377,22 @@ Extract 5-10 semantic propositions. If text is mostly HTML/code, return []. Outp
         prompt = self._build_extraction_prompt(content)
 
         try:
-            client = await self._get_async_client()
-
-            llm_params = self.config.get_llm_params({
-                "model": self.config.model_name,
-                "messages": [
-                    {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            })
-
             logger.debug(f"Calling LLM for chunk {chunk_id}...")
-            response = await client.chat.completions.create(**llm_params)
+
+            messages = [
+                {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
+                {"role": "user", "content": prompt}
+            ]
+
+            response_text = await self.llm_client.chat_completion_async(messages)
             logger.debug(f"LLM response received for chunk {chunk_id}")
 
-            response_text = response.choices[0].message.content.strip()
-
             return self._parse_and_validate_facts(response_text, chunk_id, content)
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON for chunk {chunk_id}: {e}")
-            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
+            self.llm_client.handle_llm_error(e, f"chunk {chunk_id}", response_text if 'response_text' in locals() else None)
             return []
         except Exception as e:
-            logger.error(f"Error extracting propositions from chunk {chunk_id}: {e}")
+            self.llm_client.handle_llm_error(e, f"chunk {chunk_id}")
             return []
 
-    def _extract_propositions_llm_sync(
-        self,
-        chunk_id: str,
-        content: str
-    ) -> List[AtomicFact]:
-        """
-        Extract semantic propositions using LLM (synchronous).
-
-        Args:
-            chunk_id: Chunk identifier
-            content: Chunk content
-
-        Returns:
-            List of AtomicFact objects
-        """
-        # Limit content length for LLM
-        max_content_len = 2000
-        if len(content) > max_content_len:
-            content = content[:max_content_len] + "..."
-
-        prompt = self._build_extraction_prompt(content)
-
-        try:
-            api_key = self.llm_manager.get_api_key()
-
-            import openai
-            client = openai.OpenAI(api_key=api_key)
-
-            llm_params = self.config.get_llm_params({
-                "model": self.config.model_name,
-                "messages": [
-                    {"role": "system", "content": "You are a fact extraction assistant. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            })
-
-            response = client.chat.completions.create(**llm_params)
-            response_text = response.choices[0].message.content.strip()
-
-            return self._parse_and_validate_facts(response_text, chunk_id, content)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON for chunk {chunk_id}: {e}")
-            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
-            return []
-        except Exception as e:
-            logger.error(f"Error extracting propositions from chunk {chunk_id}: {e}", exc_info=True)
-            return []
