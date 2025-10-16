@@ -1,10 +1,10 @@
 """
 Evaluator orchestrates the entire evaluation pipeline.
 
+Optimized for memory efficiency and minimal I/O overhead.
 Loads queries/qrels, performs batch retrieval, calculates metrics, and saves results.
 """
 
-import sys
 import json
 import asyncio
 import logging
@@ -52,29 +52,30 @@ class Evaluator:
         self.failed_queries = []
     
     def load_queries(self) -> bool:
-        """Load queries from JSONL file."""
+        """Load queries from JSONL file. Optimized: single-pass type counting."""
         queries_path = Path(self.config.queries_file)
-        
+
         if not queries_path.exists():
             logger.error(f"Queries file not found: {queries_path}")
             return False
-        
+
         try:
+            type_counts = defaultdict(int)
+
+            # Single-pass loading and counting
             with open(queries_path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    query = json.loads(line.strip())
-                    self.queries.append(query)
-            
+                    if line.strip():  # Skip empty lines
+                        query = json.loads(line)
+                        self.queries.append(query)
+
+                        # Count types during load (single pass)
+                        qtype = query.get('metadata', {}).get('query_type', 'unknown')
+                        type_counts[qtype] += 1
+
             logger.info(f"✓ Loaded {len(self.queries)} queries from {queries_path}")
-            
-            # Count query types
-            type_counts = defaultdict(int)
-            for query in self.queries:
-                qtype = query.get('metadata', {}).get('query_type', 'unknown')
-                type_counts[qtype] += 1
-            
             logger.info(f"  Query types: {dict(type_counts)}")
-            
+
             return True
         except Exception as e:
             logger.error(f"Error loading queries: {e}")

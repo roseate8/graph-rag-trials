@@ -1,5 +1,6 @@
 """
 Retriever integration for evaluation - uses existing retrieval system.
+Optimized for async batch processing without caching.
 """
 
 import sys
@@ -110,14 +111,15 @@ class EvalRetriever:
                 0.0  # min_similarity (retrieve all top-k)
             )
             
-            # Convert to evaluation format
-            retrieved_docs = []
-            for rank, result in enumerate(results, start=1):
-                retrieved_docs.append({
+            # Convert to evaluation format - FIX: use similarity_score not similarity
+            retrieved_docs = [
+                {
                     'chunk_id': result.chunk_id,
-                    'score': result.similarity,
+                    'score': result.similarity_score,
                     'rank': rank
-                })
+                }
+                for rank, result in enumerate(results, start=1)
+            ]
             
             return RetrievalResult(
                 query_id=query_id,
