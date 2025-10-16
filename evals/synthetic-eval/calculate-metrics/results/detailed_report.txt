@@ -1,7 +1,7 @@
 ================================================================================
 SYNTHETIC EVALUATION - METRICS REPORT
 ================================================================================
-Generated: 2025-10-16 22:06:42
+Generated: 2025-10-16 22:36:48
 Collection: elastic_embeddings_m3
 Embedding Model: BAAI/bge-m3
 Re-ranking: Enabled
@@ -23,32 +23,32 @@ OVERALL METRICS (ALL QUERIES)
 
 Metric                    Value
 --------------------------------
-MAP                      0.0164
-MRR                      0.3050
+MAP                      0.0183
+MRR                      0.3115
 
 --- K = 1 ---
-  Recall@1               0.0069
-  Precision@1            0.1923
-  NDCG@1                 0.1429
-  Hits@1                 0.1923
+  Recall@1               0.0095
+  Precision@1            0.1484
+  NDCG@1                 0.1245
+  Hits@1                 0.1484
 
 --- K = 3 ---
-  Recall@3               0.0130
-  Precision@3            0.1667
-  NDCG@3                 0.1388
-  Hits@3                 0.3736
+  Recall@3               0.0163
+  Precision@3            0.1612
+  NDCG@3                 0.1584
+  Hits@3                 0.4121
 
 --- K = 5 ---
-  Recall@5               0.0223
-  Precision@5            0.1560
-  NDCG@5                 0.1554
-  Hits@5                 0.4890
+  Recall@5               0.0243
+  Precision@5            0.1769
+  NDCG@5                 0.1927
+  Hits@5                 0.5879
 
 --- K = 10 ---
-  Recall@10              0.0302
-  Precision@10           0.1082
-  NDCG@10                0.1494
-  Hits@10                0.5659
+  Recall@10              0.0325
+  Precision@10           0.1181
+  NDCG@10                0.1798
+  Hits@10                0.6429
 
 
 ================================================================================
@@ -59,31 +59,31 @@ MULTI_HOP (62 queries)
 --------------------------------------------------------------------------------
 Metric                    Value
 --------------------------------
-MAP                      0.0100
-MRR                      0.4027
+MAP                      0.0085
+MRR                      0.3948
 
 --- K = 1 ---
-  Recall@1               0.0030
-  Precision@1            0.2097
-  NDCG@1                 0.1183
-  Hits@1                 0.2097
+  Recall@1               0.0021
+  Precision@1            0.1613
+  NDCG@1                 0.0914
+  Hits@1                 0.1613
 
 --- K = 3 ---
-  Recall@3               0.0084
-  Precision@3            0.2366
-  NDCG@3                 0.1351
-  Hits@3                 0.5484
+  Recall@3               0.0081
+  Precision@3            0.2204
+  NDCG@3                 0.1420
+  Hits@3                 0.5806
 
 --- K = 5 ---
-  Recall@5               0.0136
-  Precision@5            0.2323
-  NDCG@5                 0.1630
-  Hits@5                 0.7097
+  Recall@5               0.0133
+  Precision@5            0.2290
+  NDCG@5                 0.1738
+  Hits@5                 0.7419
 
 --- K = 10 ---
-  Recall@10              0.0198
-  Precision@10           0.1694
-  NDCG@10                0.1602
+  Recall@10              0.0172
+  Precision@10           0.1484
+  NDCG@10                0.1650
   Hits@10                0.8065
 
 
@@ -91,157 +91,157 @@ SINGLE_HOP (120 queries)
 --------------------------------------------------------------------------------
 Metric                    Value
 --------------------------------
-MAP                      0.0197
-MRR                      0.2545
+MAP                      0.0234
+MRR                      0.2686
 
 --- K = 1 ---
-  Recall@1               0.0089
-  Precision@1            0.1833
-  NDCG@1                 0.1556
-  Hits@1                 0.1833
+  Recall@1               0.0133
+  Precision@1            0.1417
+  NDCG@1                 0.1417
+  Hits@1                 0.1417
 
 --- K = 3 ---
-  Recall@3               0.0154
+  Recall@3               0.0206
   Precision@3            0.1306
-  NDCG@3                 0.1407
-  Hits@3                 0.2833
+  NDCG@3                 0.1669
+  Hits@3                 0.3250
 
 --- K = 5 ---
-  Recall@5               0.0268
-  Precision@5            0.1167
-  NDCG@5                 0.1515
-  Hits@5                 0.3750
+  Recall@5               0.0300
+  Precision@5            0.1500
+  NDCG@5                 0.2025
+  Hits@5                 0.5083
 
 --- K = 10 ---
-  Recall@10              0.0356
-  Precision@10           0.0767
-  NDCG@10                0.1438
-  Hits@10                0.4417
+  Recall@10              0.0404
+  Precision@10           0.1025
+  NDCG@10                0.1875
+  Hits@10                0.5583
 
 
 ================================================================================
 TOP PERFORMING QUERIES (by NDCG@10)
 ================================================================================
 
-1. Query: q0117
+1. Query: q0119
    Type: single_hop
    NDCG@10: 0.8199
    Recall@10: 0.6667
    Precision@10: 0.2000
 
-2. Query: q0004
+2. Query: q0005
    Type: single_hop
-   NDCG@10: 0.7749
-   Recall@10: 0.0741
-   Precision@10: 0.4000
+   NDCG@10: 0.8189
+   Recall@10: 0.0926
+   Precision@10: 0.5000
 
-3. Query: q0009
+3. Query: q0117
    Type: single_hop
-   NDCG@10: 0.7402
-   Recall@10: 0.0741
-   Precision@10: 0.4000
+   NDCG@10: 0.7991
+   Recall@10: 0.6667
+   Precision@10: 0.2000
 
-4. Query: q0120
+4. Query: q0116
    Type: single_hop
    NDCG@10: 0.7262
    Recall@10: 0.3333
    Precision@10: 0.1000
 
-5. Query: q0010
+5. Query: q0118
    Type: single_hop
-   NDCG@10: 0.7260
-   Recall@10: 0.0556
-   Precision@10: 0.3000
+   NDCG@10: 0.7262
+   Recall@10: 0.3333
+   Precision@10: 0.1000
 
-6. Query: q0012
+6. Query: q0003
    Type: single_hop
-   NDCG@10: 0.7024
-   Recall@10: 0.0556
-   Precision@10: 0.3000
+   NDCG@10: 0.6024
+   Recall@10: 0.0769
+   Precision@10: 0.4000
 
-7. Query: q0013
-   Type: single_hop
-   NDCG@10: 0.6875
-   Recall@10: 0.0556
-   Precision@10: 0.3000
+7. Query: q0179
+   Type: multi_hop
+   NDCG@10: 0.5699
+   Recall@10: 0.0360
+   Precision@10: 0.4000
 
 8. Query: q0014
-   Type: single_hop
-   NDCG@10: 0.6770
-   Recall@10: 0.0556
-   Precision@10: 0.3000
-
-9. Query: q0011
-   Type: single_hop
-   NDCG@10: 0.6770
-   Recall@10: 0.0556
-   Precision@10: 0.3000
-
-10. Query: q0008
    Type: single_hop
    NDCG@10: 0.5557
    Recall@10: 0.0370
    Precision@10: 0.2000
 
+9. Query: q0013
+   Type: single_hop
+   NDCG@10: 0.5320
+   Recall@10: 0.0556
+   Precision@10: 0.3000
+
+10. Query: q0011
+   Type: single_hop
+   NDCG@10: 0.5171
+   Recall@10: 0.0556
+   Precision@10: 0.3000
+
 ================================================================================
 WORST PERFORMING QUERIES (by NDCG@10)
 ================================================================================
 
-1. Query: q0071
+1. Query: q0007
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-2. Query: q0063
+2. Query: q0071
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-3. Query: q0058
+3. Query: q0023
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-4. Query: q0036
+4. Query: q0008
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-5. Query: q0140
+5. Query: q0024
+   Type: single_hop
+   NDCG@10: 0.0000
+   Recall@10: 0.0000
+   Precision@10: 0.0000
+
+6. Query: q0056
+   Type: single_hop
+   NDCG@10: 0.0000
+   Recall@10: 0.0000
+   Precision@10: 0.0000
+
+7. Query: q0173
    Type: multi_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-6. Query: q0023
+8. Query: q0108
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-7. Query: q0024
+9. Query: q0115
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
    Precision@10: 0.0000
 
-8. Query: q0056
-   Type: single_hop
-   NDCG@10: 0.0000
-   Recall@10: 0.0000
-   Precision@10: 0.0000
-
-9. Query: q0155
-   Type: multi_hop
-   NDCG@10: 0.0000
-   Recall@10: 0.0000
-   Precision@10: 0.0000
-
-10. Query: q0051
+10. Query: q0072
    Type: single_hop
    NDCG@10: 0.0000
    Recall@10: 0.0000
