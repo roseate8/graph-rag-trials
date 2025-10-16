@@ -44,9 +44,7 @@ class MilvusConfig:
             # Optimized search parameters
             if self.index_type == "HNSW":
                 self.search_params = {
-                    "ef": 512  # Increased to support large top_k values (was 128, now 512)
-                    # Note: ef must be >= top_k. With retrieval_multiplier=10 and max_k=100,
-                    # we need ef >= 1000. Setting to 512 as a reasonable compromise.
+                    "ef": 128  # Increased for better search quality (64->128)
                 }
             elif self.index_type in ["IVF_FLAT", "IVF_SQ8"]:
                 self.search_params = {
