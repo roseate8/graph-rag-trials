@@ -51,9 +51,9 @@ class Reporter:
             f.write("SYNTHETIC EVALUATION - METRICS REPORT\n")
             f.write("=" * 80 + "\n")
             f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Collection: {self.config.collection_name}\n")
-            f.write(f"Embedding Model: {self.config.embedding_model}\n")
-            f.write(f"Re-ranking: {'Enabled' if self.config.enable_reranking else 'Disabled'}\n")
+            f.write(f"Collection: {self.config.rag_system_params['collection_name']}\n")
+            f.write(f"Embedding Model: {self.config.rag_system_params['embedding_model']}\n")
+            f.write(f"Re-ranking: {'Enabled' if self.config.rag_system_params['enable_reranking'] else 'Disabled'}\n")
             f.write("\n")
             
             # Summary statistics
