@@ -45,56 +45,40 @@ class EvalRetriever:
     def __init__(self, config):
         """
         Initialize retriever with RAGSystem.
-        
+
         Args:
             config: EvalConfig instance
         """
         self.config = config
         self.rag_system = None
-        
+
+        # Extract params for logging
+        params = config.rag_system_params
         logger.info(f"Initializing EvalRetriever with RAGSystem:")
-        logger.info(f"  Collection: {config.collection_name}")
-        logger.info(f"  Embedding: {config.embedding_model}")
-        logger.info(f"  Re-ranking: {config.enable_reranking}")
-        logger.info(f"  Query decomposition: {config.enable_query_decomposition}")
+        logger.info(f"  Collection: {params.get('collection_name', 'N/A')}")
+        logger.info(f"  Embedding: {params.get('embedding_model', 'N/A')}")
+        logger.info(f"  Re-ranking: {params.get('enable_reranking', False)}")
+        logger.info(f"  Query decomposition: {params.get('enable_query_decomposition', False)}")
     
     def connect(self) -> bool:
         """Connect to Milvus using RAGSystem."""
         try:
-            # Initialize RAGSystem with all config parameters
-            self.rag_system = RAGSystem(
-                # Retriever parameters
-                embedding_model=self.config.embedding_model,
-                collection_name=self.config.collection_name,
-                # Re-ranking parameters
-                enable_reranking=self.config.enable_reranking,
-                reranker_config=self.config.reranker_config,
-                retrieval_multiplier=self.config.retrieval_multiplier,
-                # Query decomposition parameters
-                enable_query_decomposition=self.config.enable_query_decomposition,
-                max_sub_queries=self.config.max_sub_queries,
-                fusion_k_constant=self.config.fusion_k_constant,
-                # Context parameters
-                max_context_tokens=self.config.max_context_tokens,
-                include_scores=self.config.include_scores,
-                # LLM parameters (mock for evaluation)
-                llm_type=self.config.llm_type,
-                llm_model=self.config.llm_model,
-                # History disabled for evaluation
-                enable_history=self.config.enable_history
-            )
-            
+            # Initialize RAGSystem with **kwargs pass-through
+            # This ensures 100% dependency on retrieval/core.py
+            # Any new parameters added to RAGSystem automatically work here!
+            self.rag_system = RAGSystem(**self.config.rag_system_params)
+
             success = self.rag_system.connect()
             if success:
                 logger.info("✓ Connected to Milvus via RAGSystem")
-                
+
                 # Get collection stats
                 stats = self.rag_system.get_system_stats()
                 retriever_stats = stats.get('retriever_stats', {})
                 logger.info(f"  Total documents: {retriever_stats.get('num_entities', 'N/A')}")
             else:
                 logger.error("✗ Failed to connect to Milvus")
-            
+
             return success
         except Exception as e:
             logger.error(f"Error connecting to Milvus: {e}")

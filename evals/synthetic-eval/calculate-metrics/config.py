@@ -4,38 +4,57 @@ Optimized with efficient defaults and validation.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 
 @dataclass
 class EvalConfig:
-    """Configuration for evaluation metrics calculation. Optimized with dataclass field defaults."""
+    """
+    Configuration for evaluation metrics calculation.
 
-    # Retrieval settings (must match your existing system)
-    collection_name: str = "elastic_embeddings_m3"
-    embedding_model: str = "BAAI/bge-m3"
-    milvus_profile: str = "production"
-    enable_reranking: bool = True
-    
-    # Re-ranking configuration (passed to RAGSystem)
-    retrieval_multiplier: int = 10  # Multiplier for initial retrieval when re-ranking enabled
-    reranker_config: Optional[Dict[str, Any]] = None  # Custom re-ranker configuration
-    
-    # Query decomposition configuration
-    enable_query_decomposition: bool = False  # Enable multi-query retrieval with fusion
-    max_sub_queries: int = 5  # Maximum number of sub-queries to generate
-    fusion_k_constant: int = 60  # K constant for reciprocal rank fusion
-    
-    # Context formatting configuration
-    max_context_tokens: int = 4000  # Maximum tokens for context
-    include_scores: bool = False  # Include similarity scores in formatted context
-    
-    # LLM configuration (for full RAG pipeline, but not needed for evaluation)
-    llm_type: str = "mock"  # Use mock LLM for evaluation (no actual generation needed)
-    llm_model: str = "gpt-4o-mini"  # Model name (not used with mock)
-    
-    # History configuration (disabled for evaluation)
-    enable_history: bool = False  # Disable conversation history for evaluation
+    Architecture: Uses **kwargs pass-through pattern for RAGSystem parameters.
+    This ensures 100% dependency on retrieval/core.py - any new parameters added
+    to RAGSystem automatically work here without code changes.
+    """
+
+    # =============================================================================
+    # RAGSystem Parameters (passed via **kwargs to retrieval/core.py)
+    # =============================================================================
+    # Any parameters here are passed directly to RAGSystem.__init__()
+    # If you add new parameters to RAGSystem, just add them to this dict.
+    # No changes needed in retriever_for_evals.py!
+
+    rag_system_params: Dict[str, Any] = field(default_factory=lambda: {
+        # Retriever parameters
+        'embedding_model': "BAAI/bge-m3",
+        'collection_name': "elastic_embeddings_m3",
+
+        # Re-ranking parameters
+        'enable_reranking': True,
+        'reranker_config': None,  # Custom re-ranker configuration
+        'retrieval_multiplier': 10,  # Multiplier for initial retrieval when re-ranking
+
+        # Query decomposition parameters
+        'enable_query_decomposition': False,  # Enable multi-query retrieval with fusion
+        'max_sub_queries': 5,  # Maximum number of sub-queries to generate
+        'fusion_k_constant': 60,  # K constant for reciprocal rank fusion
+
+        # Context formatting parameters
+        'max_context_tokens': 4000,  # Maximum tokens for context
+        'include_scores': False,  # Include similarity scores in formatted context
+
+        # LLM parameters (mock for evaluation - no actual generation needed)
+        'llm_type': "mock",
+        'llm_model': "gpt-4o-mini",
+
+        # History parameters (disabled for evaluation)
+        'enable_history': False,
+        'history_file': "conversation_history.json"
+    })
+
+    # =============================================================================
+    # Evaluation-Specific Parameters (not passed to RAGSystem)
+    # =============================================================================
 
     # Evaluation K values - Use field() for mutable defaults
     # IMPORTANT: Max K limited to 50 to avoid Milvus ef parameter issues (ef=128 in milvus_config)
