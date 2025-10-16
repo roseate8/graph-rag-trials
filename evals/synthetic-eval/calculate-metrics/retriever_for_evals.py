@@ -160,8 +160,17 @@ class EvalRetriever:
         logger.info(f"Processing {len(queries)} queries (batch_size={self.config.batch_size}, top_k={top_k})")
 
         # Suppress noisy loggers during batch processing
-        logging.getLogger('embeddings.milvus_store').setLevel(logging.WARNING)
-        logging.getLogger('retrieval.retrieval').setLevel(logging.WARNING)
+        old_levels = {}
+        noisy_loggers = [
+            'embeddings.milvus_store',
+            'retrieval.retrieval',
+            'pymilvus',
+            'handler'
+        ]
+        for logger_name in noisy_loggers:
+            noisy_logger = logging.getLogger(logger_name)
+            old_levels[logger_name] = noisy_logger.level
+            noisy_logger.setLevel(logging.CRITICAL)  # Suppress everything except critical
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.config.max_concurrent)
@@ -226,8 +235,8 @@ class EvalRetriever:
             results = processed_results
 
         # Restore logger levels
-        logging.getLogger('embeddings.milvus_store').setLevel(logging.INFO)
-        logging.getLogger('retrieval.retrieval').setLevel(logging.INFO)
+        for logger_name, old_level in old_levels.items():
+            logging.getLogger(logger_name).setLevel(old_level)
 
         # Summary
         success_count = sum(1 for r in results if r.success)
