@@ -340,7 +340,7 @@ async def main():
 
             logger.info(f"\nWith settings:")
             logger.info(f"  - K values: {config.k_values}")
-            logger.info(f"  - Re-ranking: {config.enable_reranking}")
+            logger.info(f"  - Re-ranking: {config.rag_system_params['enable_reranking']}")
             logger.info(f"  - Batch size: {config.batch_size}")
 
             return 0
