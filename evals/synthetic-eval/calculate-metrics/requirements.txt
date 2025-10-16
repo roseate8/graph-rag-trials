@@ -1,0 +1,14 @@
+# Requirements for metrics calculation
+# Inherits from parent project dependencies
+
+# Progress bars
+tqdm>=4.66.0
+
+# Async support (built-in with Python 3.7+)
+# asyncio - included in Python standard library
+
+# Note: Other dependencies inherited from project root:
+# - pymilvus (from retrieval system)
+# - sentence-transformers (for BGE-M3)
+# - FlagEmbedding (for re-ranking)
+
