@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -52,6 +53,11 @@ class EvalRetriever:
         self.config = config
         self.rag_system = None
 
+        # CRITICAL: Use single-threaded executor for CUDA re-ranker thread-safety
+        # PyTorch CUDA models have thread-local context and cannot be safely used from multiple threads
+        # Using max_workers=1 ensures all re-ranking happens in the same thread
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rag_executor")
+
         # Extract params for logging
         params = config.rag_system_params
         logger.info(f"Initializing EvalRetriever with RAGSystem:")
@@ -59,6 +65,7 @@ class EvalRetriever:
         logger.info(f"  Embedding: {params.get('embedding_model', 'N/A')}")
         logger.info(f"  Re-ranking: {params.get('enable_reranking', False)}")
         logger.info(f"  Query decomposition: {params.get('enable_query_decomposition', False)}")
+        logger.info(f"  Thread-safe CUDA executor: Enabled (max_workers=1)")
     
     def connect(self) -> bool:
         """Connect to Milvus using RAGSystem."""
@@ -85,10 +92,15 @@ class EvalRetriever:
             return False
     
     def disconnect(self):
-        """Disconnect from Milvus."""
+        """Disconnect from Milvus and cleanup executor."""
         if self.rag_system:
             self.rag_system.disconnect()
             logger.info("Disconnected from Milvus")
+
+        # Shutdown thread pool executor
+        if self._executor:
+            self._executor.shutdown(wait=True)
+            logger.info("Shutdown CUDA executor")
 
     def _create_failed_result(self, query: Dict[str, Any], error_msg: str) -> RetrievalResult:
         """
@@ -132,10 +144,11 @@ class EvalRetriever:
         
         try:
             # Call RAGSystem.query which handles the complete retrieval pipeline
-            # Note: RAGSystem.query is synchronous, wrap in executor for async
+            # CRITICAL: Use dedicated single-threaded executor for CUDA thread-safety
+            # This prevents "meta tensor" errors from CUDA context loss in multi-threading
             loop = asyncio.get_event_loop()
             rag_result = await loop.run_in_executor(
-                None,
+                self._executor,  # Use single-threaded executor instead of None (default pool)
                 self.rag_system.query,
                 query_text,
                 top_k,
