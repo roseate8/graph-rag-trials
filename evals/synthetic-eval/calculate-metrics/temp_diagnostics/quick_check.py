@@ -25,7 +25,7 @@ def quick_check():
     print("Loading data...", end=" ", flush=True)
     
     qrels = defaultdict(dict)
-    with open("../output/qrels.tsv", 'r', encoding='utf-8') as f:
+    with open("../../output/qrels.tsv", 'r', encoding='utf-8') as f:
         next(f)
         for line in f:
             parts = line.strip().split('\t')

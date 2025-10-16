@@ -23,10 +23,10 @@ class EvaluationDiagnostics:
     """Comprehensive diagnostics for evaluation metrics."""
     
     def __init__(self, 
-                 queries_file: str = "../output/queries.jsonl",
-                 qrels_file: str = "../output/qrels.tsv",
+                 queries_file: str = "../../output/queries.jsonl",
+                 qrels_file: str = "../../output/qrels.tsv",
                  retrieval_results_file: str = "../results/retrieval_results.jsonl",
-                 corpus_file: str = "../output/corpus.jsonl"):
+                 corpus_file: str = "../../output/corpus.jsonl"):
         self.queries_file = queries_file
         self.qrels_file = qrels_file
         self.retrieval_results_file = retrieval_results_file
