@@ -19,9 +19,14 @@ class EmbeddingService:
     def embed_chunks(self, chunks: List[Chunk]) -> List[Chunk]:
         """Generate embeddings for chunks."""
         texts = [chunk.content for chunk in chunks]
-        embeddings = self.model.encode(texts, convert_to_tensor=False)
-        
+        # Show progress bar only for batch embedding (multiple chunks)
+        embeddings = self.model.encode(
+            texts,
+            convert_to_tensor=False,
+            show_progress_bar=len(texts) > 10  # Only show for batches > 10
+        )
+
         for chunk, embedding in zip(chunks, embeddings):
             chunk.embedding = embedding.tolist()
-        
+
         return chunks

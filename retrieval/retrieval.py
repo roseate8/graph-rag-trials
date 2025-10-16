@@ -340,8 +340,13 @@ class MilvusRetriever:
             return cached_embedding
         
         # Generate new embedding with optimized conversion
-        raw_embedding = self.embedding_service.model.encode(query, convert_to_tensor=False)
-        
+        # Disable progress bar for single query encoding to avoid clutter
+        raw_embedding = self.embedding_service.model.encode(
+            query,
+            convert_to_tensor=False,
+            show_progress_bar=False
+        )
+
         # Optimize conversion from numpy to list
         query_embedding = optimize_numpy_to_list(raw_embedding)
         
