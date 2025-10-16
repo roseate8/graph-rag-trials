@@ -13,7 +13,6 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from tqdm.asyncio import tqdm as async_tqdm
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -196,8 +195,9 @@ class EvalRetriever:
         old_levels = {}
         noisy_loggers = [
             'embeddings.milvus_store',
-            'retrieval.retrieval',
-            'retrieval.core',  # Added for RAGSystem
+            'retrieval.retrieval',     # RAGSystem uses MilvusRetriever internally
+            'retrieval.core',
+            'retrieval.decomposer',    # Query decomposer (if enabled)
             'pymilvus',
             'handler'
         ]
