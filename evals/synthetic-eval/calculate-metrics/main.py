@@ -209,14 +209,18 @@ def create_config_from_args(args) -> EvalConfig:
     """Create EvalConfig from parsed arguments."""
     config = EvalConfig()
 
-    # Apply argument overrides
+    # Apply K values override
     if args.k_values:
         config.k_values = sorted(args.k_values)
 
-    config.collection_name = args.collection
-    config.embedding_model = args.embedding_model
-    config.enable_reranking = not args.no_reranking
-    config.enable_query_decomposition = args.enable_decomposition
+    # Update RAGSystem parameters via rag_system_params dict
+    # This maintains 100% dependency on retrieval/core.py
+    config.rag_system_params['collection_name'] = args.collection
+    config.rag_system_params['embedding_model'] = args.embedding_model
+    config.rag_system_params['enable_reranking'] = not args.no_reranking
+    config.rag_system_params['enable_query_decomposition'] = args.enable_decomposition
+
+    # Update evaluation-specific parameters
     config.batch_size = args.batch_size
     config.max_concurrent = args.max_concurrent
 
@@ -250,10 +254,10 @@ def display_config(config: EvalConfig, args):
         print(f"  - Skip first: {args.skip_queries} queries")
 
     print(f"\n[Retrieval Configuration]")
-    print(f"  - Collection: {config.collection_name}")
-    print(f"  - Embedding model: {config.embedding_model}")
-    print(f"  - Re-ranking: {'Enabled' if config.enable_reranking else 'Disabled'}")
-    print(f"  - Query decomposition: {'Enabled' if config.enable_query_decomposition else 'Disabled'}")
+    print(f"  - Collection: {config.rag_system_params['collection_name']}")
+    print(f"  - Embedding model: {config.rag_system_params['embedding_model']}")
+    print(f"  - Re-ranking: {'Enabled' if config.rag_system_params['enable_reranking'] else 'Disabled'}")
+    print(f"  - Query decomposition: {'Enabled' if config.rag_system_params['enable_query_decomposition'] else 'Disabled'}")
 
     print(f"\n[Metrics Configuration]")
     print(f"  - K values: {config.k_values}")
