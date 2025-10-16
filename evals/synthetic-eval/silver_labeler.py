@@ -24,6 +24,7 @@ from utils import (
     compute_token_f1, compute_token_f1_sentences,
     has_exact_match, normalize_text
 )
+from llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -47,19 +48,19 @@ class SilverLabeler:
     ):
         """
         Initialize silver labeler.
-        
+
         Args:
             config: SyntheticEvalConfig instance
             llm_manager: SecureAPIKeyManager for LLM calls
             retriever: MilvusRetriever for semantic similarity
         """
         self.config = config
-        self.llm_manager = llm_manager
+        self.llm_client = LLMClient(llm_manager, config)
         self.retriever = retriever
-        
+
         # Cache for document groupings
         self.doc_id_cache = {}
-        
+
         logger.info("Initialized SilverLabeler with graded relevance (0-3)")
     
     def label_all_chunks(
@@ -242,28 +243,15 @@ Rubric:
 Think carefully about whether the chunk contains the answer or just related information.
 
 Output ONLY a single number (0, 1, 2, or 3). No explanation."""
-        
+
         try:
-            api_key = self.llm_manager.get_api_key()
-            
-            import openai
-            client = openai.OpenAI(api_key=api_key)
-            
-            llm_params = self.config.get_llm_params({
-                "model": self.config.model_name,
-                "messages": [
-                    {"role": "system", "content": "You are a relevance grading assistant. Output only a single digit."},
-                    {"role": "user", "content": prompt}
-                ]
-            })
-            # Override token limit for this specific call
-            if "max_completion_tokens" in llm_params:
-                llm_params["max_completion_tokens"] = 10
-            else:
-                llm_params["max_tokens"] = 10
-            response = client.chat.completions.create(**llm_params)
-            
-            response_text = response.choices[0].message.content.strip()
+            messages = [
+                {"role": "system", "content": "You are a relevance grading assistant. Output only a single digit."},
+                {"role": "user", "content": prompt}
+            ]
+
+            # Override token limit for this specific call (just need one digit)
+            response_text = self.llm_client.chat_completion(messages, max_tokens=10)
             
             # Extract number from response
             match = re.search(r'\b([0-3])\b', response_text)

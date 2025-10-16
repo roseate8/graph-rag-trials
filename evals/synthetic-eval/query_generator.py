@@ -54,15 +54,15 @@ class QueryGenerator:
     def __init__(self, config, llm_manager: SecureAPIKeyManager):
         """
         Initialize query generator.
-        
+
         Args:
             config: SyntheticEvalConfig instance
             llm_manager: SecureAPIKeyManager for LLM calls
         """
         self.config = config
-        self.llm_manager = llm_manager
+        self.llm_client = LLMClient(llm_manager, config)
         self.query_counter = 0
-        
+
         logger.info(f"Initialized QueryGenerator with model: {config.model_name}")
     
     def _generate_query_id(self) -> str:
@@ -115,30 +115,14 @@ Output JSON format (array of questions):
 ]
 
 Output ONLY valid JSON, no other text."""
-        
+
         try:
-            api_key = self.llm_manager.get_api_key()
-            
-            import openai
-            client = openai.OpenAI(api_key=api_key)
-            
-            llm_params = self.config.get_llm_params({
-                "model": self.config.model_name,
-                "messages": [
-                    {"role": "system", "content": "You are a question generation assistant. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            })
-            response = client.chat.completions.create(**llm_params)
-            
-            response_text = response.choices[0].message.content.strip()
-            
-            # Parse JSON
-            if response_text.startswith("```"):
-                response_text = re.sub(r'```json?\n?', '', response_text)
-                response_text = re.sub(r'```\n?$', '', response_text)
-            
-            questions_data = json.loads(response_text)
+            messages = [
+                {"role": "system", "content": "You are a question generation assistant. Output only valid JSON."},
+                {"role": "user", "content": prompt}
+            ]
+
+            questions_data = self.llm_client.chat_completion_json(messages)
             
             # Convert to Query objects
             queries = []
@@ -160,13 +144,12 @@ Output ONLY valid JSON, no other text."""
             
             logger.debug(f"Generated {len(queries)} single-hop queries for fact {fact.fact_id}")
             return queries
-            
+
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
-            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'NO RESPONSE'}")
+            self.llm_client.handle_llm_error(e, f"fact {fact.fact_id}")
             return []
         except Exception as e:
-            logger.error(f"Error generating single-hop queries: {e}")
+            self.llm_client.handle_llm_error(e, f"fact {fact.fact_id}")
             return []
     
     def generate_multi_hop(self, fact_pairs: List[Tuple[AtomicFact, AtomicFact]]) -> List[Query]:
@@ -217,30 +200,14 @@ Output JSON format:
 }}
 
 Output ONLY valid JSON, no other text."""
-            
+
             try:
-                api_key = self.llm_manager.get_api_key()
-                
-                import openai
-                client = openai.OpenAI(api_key=api_key)
-                
-                llm_params = self.config.get_llm_params({
-                    "model": self.config.model_name,
-                    "messages": [
-                        {"role": "system", "content": "You are a multi-hop question generation assistant. Output only valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ]
-                })
-                response = client.chat.completions.create(**llm_params)
-                
-                response_text = response.choices[0].message.content.strip()
-                
-                # Parse JSON
-                if response_text.startswith("```"):
-                    response_text = re.sub(r'```json?\n?', '', response_text)
-                    response_text = re.sub(r'```\n?$', '', response_text)
-                
-                q_data = json.loads(response_text)
+                messages = [
+                    {"role": "system", "content": "You are a multi-hop question generation assistant. Output only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ]
+
+                q_data = self.llm_client.chat_completion_json(messages)
                 
                 query = Query(
                     query_id=self._generate_query_id(),
@@ -260,12 +227,12 @@ Output ONLY valid JSON, no other text."""
                 queries.append(query)
                 
                 logger.debug(f"Generated multi-hop query: {query.query_id}")
-                
+
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse LLM response as JSON: {e}")
+                self.llm_client.handle_llm_error(e, f"fact pair {fact1.fact_id}, {fact2.fact_id}")
                 continue
             except Exception as e:
-                logger.error(f"Error generating multi-hop query: {e}")
+                self.llm_client.handle_llm_error(e, f"fact pair {fact1.fact_id}, {fact2.fact_id}")
                 continue
         
         logger.info(f"Generated {len(queries)} multi-hop queries from {len(fact_pairs)} fact pairs")
