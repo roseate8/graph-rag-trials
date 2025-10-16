@@ -137,6 +137,11 @@ Examples:
         action='store_true',
         help='Disable re-ranking for faster evaluation'
     )
+    eval_group.add_argument(
+        '--enable-decomposition',
+        action='store_true',
+        help='Enable query decomposition with fusion re-ranking (uses retrieval/core.py full pipeline)'
+    )
 
     # Performance options
     perf_group = parser.add_argument_group('Performance Options')
@@ -211,6 +216,7 @@ def create_config_from_args(args) -> EvalConfig:
     config.collection_name = args.collection
     config.embedding_model = args.embedding_model
     config.enable_reranking = not args.no_reranking
+    config.enable_query_decomposition = args.enable_decomposition
     config.batch_size = args.batch_size
     config.max_concurrent = args.max_concurrent
 
@@ -247,6 +253,7 @@ def display_config(config: EvalConfig, args):
     print(f"  - Collection: {config.collection_name}")
     print(f"  - Embedding model: {config.embedding_model}")
     print(f"  - Re-ranking: {'Enabled' if config.enable_reranking else 'Disabled'}")
+    print(f"  - Query decomposition: {'Enabled' if config.enable_query_decomposition else 'Disabled'}")
 
     print(f"\n[Metrics Configuration]")
     print(f"  - K values: {config.k_values}")
