@@ -18,7 +18,9 @@ class EvalConfig:
     enable_reranking: bool = True
 
     # Evaluation K values - Use field() for mutable defaults
-    k_values: List[int] = field(default_factory=lambda: [1, 3, 5, 10, 20, 50, 100])
+    # IMPORTANT: Max K limited to 50 to avoid Milvus ef parameter issues (ef=128 in milvus_config)
+    # With re-ranking multiplier of 10, max retrieval is 50*10=500 < ef(128) limit
+    k_values: List[int] = field(default_factory=lambda: [1, 3, 5, 10, 20, 50])
 
     # Async processing settings
     batch_size: int = 15  # Number of concurrent retrieval requests
