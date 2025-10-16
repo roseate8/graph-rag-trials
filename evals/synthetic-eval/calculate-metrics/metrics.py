@@ -7,7 +7,7 @@ Supports graded relevance (0-3) for NDCG and binary relevance for other metrics.
 
 import math
 import logging
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Tuple
 
 logger = logging.getLogger(__name__)
 

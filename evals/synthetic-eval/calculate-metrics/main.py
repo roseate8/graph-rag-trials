@@ -235,30 +235,30 @@ def display_config(config: EvalConfig, args):
     print("\n" + "=" * 80)
     print("EVALUATION CONFIGURATION")
     print("=" * 80)
-    print(f"\n📊 Query Filtering:")
-    print(f"  • Number of queries: {args.num_queries or 'all'}")
-    print(f"  • Query type filter: {args.query_type}")
+    print(f"\n[Query Filtering]")
+    print(f"  - Number of queries: {args.num_queries or 'all'}")
+    print(f"  - Query type filter: {args.query_type}")
     if args.query_ids:
-        print(f"  • Specific query IDs: {len(args.query_ids)} queries")
+        print(f"  - Specific query IDs: {len(args.query_ids)} queries")
     if args.skip_queries > 0:
-        print(f"  • Skip first: {args.skip_queries} queries")
+        print(f"  - Skip first: {args.skip_queries} queries")
 
-    print(f"\n🔍 Retrieval Configuration:")
-    print(f"  • Collection: {config.collection_name}")
-    print(f"  • Embedding model: {config.embedding_model}")
-    print(f"  • Re-ranking: {'Enabled' if config.enable_reranking else 'Disabled'}")
+    print(f"\n[Retrieval Configuration]")
+    print(f"  - Collection: {config.collection_name}")
+    print(f"  - Embedding model: {config.embedding_model}")
+    print(f"  - Re-ranking: {'Enabled' if config.enable_reranking else 'Disabled'}")
 
-    print(f"\n📈 Metrics Configuration:")
-    print(f"  • K values: {config.k_values}")
+    print(f"\n[Metrics Configuration]")
+    print(f"  - K values: {config.k_values}")
 
-    print(f"\n⚡ Performance Settings:")
-    print(f"  • Batch size: {config.batch_size}")
-    print(f"  • Max concurrent: {config.max_concurrent}")
+    print(f"\n[Performance Settings]")
+    print(f"  - Batch size: {config.batch_size}")
+    print(f"  - Max concurrent: {config.max_concurrent}")
 
-    print(f"\n📁 Input/Output:")
-    print(f"  • Queries file: {config.queries_file}")
-    print(f"  • Qrels file: {config.qrels_file}")
-    print(f"  • Output directory: {config.results_dir}")
+    print(f"\n[Input/Output]")
+    print(f"  - Queries file: {config.queries_file}")
+    print(f"  - Qrels file: {config.qrels_file}")
+    print(f"  - Output directory: {config.results_dir}")
 
     print("\n" + "=" * 80 + "\n")
 
@@ -315,7 +315,7 @@ async def main():
 
         # Dry run mode - just show what would be evaluated
         if args.dry_run:
-            logger.info("\n🔍 DRY RUN MODE - No evaluation will be performed")
+            logger.info("\n[DRY RUN MODE] - No evaluation will be performed")
             logger.info(f"\nWould evaluate {len(evaluator.queries)} queries:")
 
             # Show query type breakdown
@@ -325,12 +325,12 @@ async def main():
                 for q in evaluator.queries
             )
             for qtype, count in type_counts.items():
-                logger.info(f"  • {qtype}: {count} queries")
+                logger.info(f"  - {qtype}: {count} queries")
 
             logger.info(f"\nWith settings:")
-            logger.info(f"  • K values: {config.k_values}")
-            logger.info(f"  • Re-ranking: {config.enable_reranking}")
-            logger.info(f"  • Batch size: {config.batch_size}")
+            logger.info(f"  - K values: {config.k_values}")
+            logger.info(f"  - Re-ranking: {config.enable_reranking}")
+            logger.info(f"  - Batch size: {config.batch_size}")
 
             return 0
 
@@ -339,30 +339,30 @@ async def main():
 
         if success:
             logger.info("\n" + "=" * 80)
-            logger.info("✅ EVALUATION COMPLETED SUCCESSFULLY!")
+            logger.info("EVALUATION COMPLETED SUCCESSFULLY!")
             logger.info("=" * 80)
-            logger.info(f"\n📁 Results saved to: {config.results_dir}/")
-            logger.info(f"\n📄 Key files:")
-            logger.info(f"  • Overall metrics:    {config.metrics_overall_file}")
-            logger.info(f"  • By query type:      {config.metrics_by_type_file}")
-            logger.info(f"  • By K values:        {config.metrics_by_k_file}")
-            logger.info(f"  • Detailed report:    {config.detailed_report_file}")
-            logger.info(f"  • Retrieval results:  {config.retrieval_results_file}")
+            logger.info(f"\nResults saved to: {config.results_dir}/")
+            logger.info(f"\nKey files:")
+            logger.info(f"  - Overall metrics:    {config.metrics_overall_file}")
+            logger.info(f"  - By query type:      {config.metrics_by_type_file}")
+            logger.info(f"  - By K values:        {config.metrics_by_k_file}")
+            logger.info(f"  - Detailed report:    {config.detailed_report_file}")
+            logger.info(f"  - Retrieval results:  {config.retrieval_results_file}")
 
             if Path(config.failed_queries_file).exists():
-                logger.warning(f"  ⚠ Failed queries:     {config.failed_queries_file}")
+                logger.warning(f"  - Failed queries:     {config.failed_queries_file}")
 
             logger.info("\n" + "=" * 80)
             return 0
         else:
-            logger.error("\n✗ Evaluation failed!")
+            logger.error("\nEvaluation failed!")
             return 1
 
     except KeyboardInterrupt:
-        logger.warning("\n⚠ Evaluation interrupted by user")
+        logger.warning("\nEvaluation interrupted by user")
         return 1
     except Exception as e:
-        logger.error(f"\n✗ Unexpected error: {e}", exc_info=True)
+        logger.error(f"\nUnexpected error: {e}", exc_info=True)
         return 1
 
 
