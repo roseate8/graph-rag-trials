@@ -5,14 +5,14 @@ SYNTHETIC EVALUATION DATASET GENERATION REPORT
 SAMPLING STATISTICS
 ----------------------------------------
 Total chunks in collection: 736
-Number of clusters: 15
-Target samples: 150
-Actual samples: 150
+Number of clusters: unknown
+Target samples: N/A
+Actual samples: 736
 
 FACT EXTRACTION STATISTICS
 ----------------------------------------
 Total facts extracted: 567
-Facts per chunk (avg): 3.8
+Facts per chunk (avg): 0.8
 Fact types:
   - factual_claim: 507
   - temporal_event: 36
@@ -37,12 +37,11 @@ SILVER LABELING STATISTICS
 ----------------------------------------
 Total labels assigned: 133952
 Label distribution:
-  - Relevance 0: 122729 (91.6%)
-  - Relevance 1: 10890 (8.1%)
-  - Relevance 2: 10 (0.0%)
+  - Relevance 0: 133628 (99.8%)
+  - Relevance 2: 1 (0.0%)
   - Relevance 3: 323 (0.2%)
 
-Average relevant chunks per query: 61.7
+Average relevant chunks per query: 1.8
 Queries with no relevant chunks: 0
 
 ================================================================================

@@ -85,7 +85,8 @@ class SilverLabeler:
         labels = {}
 
         for chunk in all_chunks:
-            chunk_id = chunk.get('chunk_id', '')
+            # Handle both corpus format (_id) and internal format (chunk_id)
+            chunk_id = chunk.get('_id') or chunk.get('chunk_id', '')
 
             # Gold chunks always get rel=3
             if chunk_id in query.gold_chunk_ids:
@@ -122,8 +123,10 @@ class SilverLabeler:
         Returns:
             Relevance score (0-3)
         """
-        content = chunk.get('content', '')
-        chunk_id = chunk.get('chunk_id', '')
+        # Handle both corpus format (text) and internal format (content)
+        content = chunk.get('text') or chunk.get('content', '')
+        # Handle both corpus format (_id) and internal format (chunk_id)
+        chunk_id = chunk.get('_id') or chunk.get('chunk_id', '')
         
         if not content:
             return 0
@@ -276,7 +279,15 @@ Output ONLY a single number (0, 1, 2, or 3). No explanation."""
 
         # Build chunk_to_doc mapping ONCE for all queries (optimization)
         logger.info(f"Building chunk-to-doc mapping for {len(all_chunks)} chunks...")
-        chunk_to_doc = {chunk['chunk_id']: chunk.get('doc_id', '') for chunk in all_chunks}
+        # Handle both corpus format (_id, metadata.doc_id) and internal format (chunk_id, doc_id)
+        chunk_to_doc = {}
+        for chunk in all_chunks:
+            # Get chunk ID (try _id first, fallback to chunk_id)
+            cid = chunk.get('_id') or chunk.get('chunk_id', '')
+            # Get doc ID (try metadata.doc_id first, fallback to doc_id)
+            did = chunk.get('metadata', {}).get('doc_id', '') or chunk.get('doc_id', '')
+            if cid:
+                chunk_to_doc[cid] = did
 
         all_qrels = {}
 
