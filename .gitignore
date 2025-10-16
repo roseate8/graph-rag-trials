@@ -57,3 +57,6 @@ input/*
 
 # Conversation history (may contain API keys)
 conversation_history.json
+
+# Test scripts
+evals/synthetic-eval/calculate-metrics/test_*.py
