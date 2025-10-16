@@ -2,6 +2,8 @@
 
 Comprehensive evaluation system for information retrieval metrics using batch async processing.
 
+> **Important**: This evaluation system uses `retrieval/core.py` as its retrieval engine. Any changes you make to the retrieval pipeline (query decomposition, re-ranking, fusion, etc.) will automatically be reflected in evaluation runs. This ensures 100% consistency between production retrieval and evaluation metrics.
+
 ## Overview
 
 This system evaluates retrieval performance on synthetic evaluation datasets with:
@@ -9,13 +11,14 @@ This system evaluates retrieval performance on synthetic evaluation datasets wit
 - **Graded relevance support** (0-3 scale) for NDCG
 - **Query-type breakdowns** (single-hop vs multi-hop)
 - **Comprehensive metrics**: Recall, Precision, MAP, MRR, NDCG, Hits
+- **Full RAG pipeline integration**: Uses the complete retrieval stack from `retrieval/core.py`
 
 ## Architecture
 
 ```
 calculate-metrics/
-├── config.py              # Configuration (BGE-M3, batch settings)
-├── retriever_for_evals.py # Async retrieval integration
+├── config.py              # Configuration (BGE-M3, batch settings, RAG params)
+├── retriever_for_evals.py # Async wrapper around RAGSystem from retrieval/core.py
 ├── metrics.py             # Metrics calculation (with graded relevance)
 ├── evaluator.py           # Pipeline orchestration
 ├── reporter.py            # Report generation
@@ -29,6 +32,24 @@ calculate-metrics/
     ├── failed_queries.jsonl
     └── evaluation.log
 ```
+
+### Dependency Flow
+
+```
+main.py
+  └─> evaluator.py
+      └─> retriever_for_evals.py (EvalRetriever)
+          └─> retrieval/core.py (RAGSystem)  ← MAIN DEPENDENCY
+              ├─> retrieval/retrieval.py (MilvusRetriever)
+              │   ├─> Vector search in Milvus
+              │   └─> Cross-encoder re-ranking (if enabled)
+              ├─> retrieval/decomposer/query_decomposer.py (if enabled)
+              ├─> retrieval/re_rankers/fusion_reranker.py (if enabled)
+              ├─> retrieval/formatting.py (ContextFormatter)
+              └─> retrieval/llm.py (MockLLMClient for eval)
+```
+
+**Key Design**: The evaluation system depends on `retrieval/core.py` as the single source of truth for retrieval behavior. Any changes to the retrieval pipeline automatically propagate to evaluation runs.
 
 ## Usage
 
@@ -220,21 +241,68 @@ Human-readable report with:
 
 ## Integration with Existing System
 
-This system **uses your existing retrieval infrastructure**:
+This system **uses your complete RAG pipeline** via `retrieval/core.py`:
 
 ```python
-from retrieval.retrieval import MilvusRetriever
+from retrieval.core import RAGSystem
 
-# No recreation - direct integration
-retriever = MilvusRetriever(
+# Direct integration with full pipeline
+rag_system = RAGSystem(
     embedding_model="BAAI/bge-m3",
-    milvus_profile="production",
     collection_name="elastic_embeddings_m3",
-    enable_reranking=True
+    enable_reranking=True,
+    retrieval_multiplier=10,
+    enable_query_decomposition=False,  # Optional
+    max_sub_queries=5,
+    fusion_k_constant=60,
+    llm_type="mock",  # No LLM generation needed for evaluation
+    enable_history=False  # Disabled for evaluation
 )
 ```
 
-**No modifications needed** to your retrieval code!
+### Why RAGSystem Integration?
+
+The evaluation system now depends on `retrieval/core.py` instead of directly using `MilvusRetriever`. This design ensures:
+
+1. **Automatic Pipeline Updates**: Any changes you make to the retrieval pipeline (query decomposition, re-ranking strategies, fusion algorithms) automatically flow into evaluation without requiring updates to evaluation code.
+
+2. **Feature Parity**: Evaluations use the exact same retrieval logic as production, including:
+   - Query decomposition (if enabled)
+   - Multi-query retrieval with reciprocal rank fusion
+   - Cross-encoder re-ranking (if enabled)
+   - All retrieval optimizations and bug fixes
+
+3. **Configuration Flexibility**: All RAG system parameters are configurable via `config.py`:
+   ```python
+   # Query decomposition (for complex queries)
+   enable_query_decomposition = False
+   max_sub_queries = 5
+   fusion_k_constant = 60
+   
+   # Re-ranking (for better quality)
+   enable_reranking = True
+   retrieval_multiplier = 10
+   
+   # Context formatting
+   max_context_tokens = 4000
+   include_scores = False
+   ```
+
+4. **Single Source of Truth**: The `retrieval/` folder is the only place you need to modify retrieval behavior. The evaluation system will automatically pick up those changes.
+
+### Retrieval Score Handling
+
+The evaluation system intelligently handles both similarity and re-ranking scores:
+
+```python
+# Prefers rerank_score when available (from cross-encoder re-ranking)
+# Falls back to similarity_score (from vector search) otherwise
+score = chunk.rerank_score if chunk.rerank_score is not None else chunk.similarity_score
+```
+
+This ensures metrics reflect the actual ranking used in production.
+
+**No modifications needed** to your retrieval code! Just edit `retrieval/core.py` or `retrieval/retrieval.py` and the evaluation system will use the updated logic.
 
 ## Troubleshooting
 
