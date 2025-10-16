@@ -35,7 +35,7 @@ class EvalConfig:
         'retrieval_multiplier': 10,  # Multiplier for initial retrieval when re-ranking
 
         # Query decomposition parameters
-        'enable_query_decomposition': False,  # Enable multi-query retrieval with fusion
+        'enable_query_decomposition': True,  # Enable multi-query retrieval with fusion
         'max_sub_queries': 5,  # Maximum number of sub-queries to generate
         'fusion_k_constant': 60,  # K constant for reciprocal rank fusion
 

@@ -132,16 +132,9 @@ Examples:
         default='BAAI/bge-m3',
         help='Embedding model name (default: BAAI/bge-m3)'
     )
-    eval_group.add_argument(
-        '--no-reranking',
-        action='store_true',
-        help='Disable re-ranking for faster evaluation'
-    )
-    eval_group.add_argument(
-        '--enable-decomposition',
-        action='store_true',
-        help='Enable query decomposition with fusion re-ranking (uses retrieval/core.py full pipeline)'
-    )
+    # Re-ranking and query decomposition are always enabled (production settings)
+    # These should match your production RAG configuration
+    # Removed --no-reranking and --enable-decomposition flags
 
     # Performance options
     perf_group = parser.add_argument_group('Performance Options')
