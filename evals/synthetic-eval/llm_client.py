@@ -98,11 +98,14 @@ class LLMClient:
             json.JSONDecodeError: If response is not valid JSON
         """
         # Clean markdown code block markers if present
-        if response_text.startswith("```"):
-            response_text = re.sub(r'```json?\n?', '', response_text)
-            response_text = re.sub(r'```\n?$', '', response_text)
+        cleaned = response_text.strip()
+        if cleaned.startswith("```"):
+            # Remove opening ```json or ```
+            cleaned = re.sub(r'^```json?\s*\n?', '', cleaned)
+            # Remove closing ```
+            cleaned = re.sub(r'\n?```\s*$', '', cleaned)
 
-        return json.loads(response_text.strip())
+        return json.loads(cleaned.strip())
 
     def chat_completion(
         self,
