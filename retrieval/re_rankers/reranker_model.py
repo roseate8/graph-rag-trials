@@ -1,6 +1,7 @@
 """
 Cross-encoder re-ranker implementation.
 Uses cross-encoder models for high-quality chunk re-ranking.
+Supports both sync and async batch processing.
 """
 
 import torch
@@ -10,6 +11,8 @@ import logging
 from collections import OrderedDict
 import hashlib
 import time
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     from .base import BaseReRanker, ReRankResult, ModelLoadError, ReRankingError
@@ -79,18 +82,22 @@ class CrossEncoderReRanker(BaseReRanker):
             
             # Load model
             logger.debug("Loading model...")
+            # FIXED: Don't use dtype parameter - it creates meta tensors causing device placement errors
+            # Instead, load normally and convert after moving to device
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name,
                 cache_dir=self.config.model_cache_dir,
-                dtype=torch.float16 if self.device == "cuda" else torch.float32
+                torch_dtype='auto'  # Let transformers decide optimal dtype
             )
-            
-            # Move to device and optimize
+
+            # Move to device first, then optimize
+            logger.debug(f"Moving model to device: {self.device}")
             self.model.to(self.device)
             self.model.eval()
-            
-            # Additional optimizations
-            if hasattr(self.model, 'half') and self.config.use_fp16 and self.device == "cuda":
+
+            # Convert to FP16 AFTER moving to device to avoid meta tensor issues
+            if self.config.use_fp16 and self.device == "cuda":
+                logger.debug("Converting model to FP16")
                 self.model = self.model.half()
             
             # DISABLED: torch.compile requires Triton which may not be available
@@ -328,7 +335,29 @@ class CrossEncoderReRanker(BaseReRanker):
         except Exception as e:
             logger.error(f"Error during re-ranking: {e}")
             raise ReRankingError(f"Re-ranking failed: {e}")
-    
+
+    async def rerank_async(
+        self,
+        query: str,
+        chunks: List[Dict[str, Any]],
+        top_k: int = 10
+    ) -> List[ReRankResult]:
+        """
+        Async wrapper for re-ranking - runs synchronous rerank in executor.
+        This prevents blocking the event loop during model inference.
+
+        Args:
+            query: The user query
+            chunks: List of chunk dictionaries with content and metadata
+            top_k: Number of top chunks to return after re-ranking
+
+        Returns:
+            List[ReRankResult]: Re-ranked chunks with scores and metadata
+        """
+        loop = asyncio.get_event_loop()
+        # Run sync rerank in thread pool to avoid blocking
+        return await loop.run_in_executor(None, self.rerank, query, chunks, top_k)
+
     def get_model_info(self) -> Dict[str, Any]:
         """Get detailed information about the cross-encoder model."""
         info = super().get_model_info()
@@ -339,6 +368,7 @@ class CrossEncoderReRanker(BaseReRanker):
             "cache_enabled": self.config.enable_caching,
             "optimizations": {
                 "batch_processing": True,
+                "async_support": True,
                 "vectorized_normalization": True,
                 "fast_hashing": True,
                 "efficient_caching": True,
