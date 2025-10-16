@@ -89,7 +89,27 @@ class EvalRetriever:
         if self.rag_system:
             self.rag_system.disconnect()
             logger.info("Disconnected from Milvus")
-    
+
+    def _create_failed_result(self, query: Dict[str, Any], error_msg: str) -> RetrievalResult:
+        """
+        Helper to create a failed RetrievalResult. Reduces code duplication.
+
+        Args:
+            query: Query dict
+            error_msg: Error message
+
+        Returns:
+            RetrievalResult with success=False
+        """
+        return RetrievalResult(
+            query_id=query.get('_id', ''),
+            query_text=query.get('text', ''),
+            query_type=query.get('metadata', {}).get('query_type', 'unknown'),
+            retrieved_docs=[],
+            success=False,
+            error=error_msg
+        )
+
     async def retrieve_single(self, query: Dict[str, Any], top_k: int) -> RetrievalResult:
         """
         Retrieve for a single query using RAGSystem.
@@ -147,14 +167,7 @@ class EvalRetriever:
         
         except Exception as e:
             logger.error(f"Error retrieving for query {query_id}: {e}")
-            return RetrievalResult(
-                query_id=query_id,
-                query_text=query_text,
-                query_type=query_type,
-                retrieved_docs=[],
-                success=False,
-                error=str(e)
-            )
+            return self._create_failed_result(query, str(e))
     
     async def retrieve_batch(
         self,
@@ -212,19 +225,12 @@ class EvalRetriever:
                     batch = tasks[i:i + self.config.batch_size]
                     batch_results = await asyncio.gather(*batch, return_exceptions=True)
 
-                    # Handle exceptions
+                    # Optimized: handle exceptions with helper function
                     for j, result in enumerate(batch_results):
                         if isinstance(result, Exception):
-                            # Create failed result
                             query_idx = i + j
-                            results.append(RetrievalResult(
-                                query_id=queries[query_idx].get('_id', f'query_{query_idx}'),
-                                query_text=queries[query_idx].get('text', ''),
-                                query_type=queries[query_idx].get('metadata', {}).get('query_type', 'unknown'),
-                                retrieved_docs=[],
-                                success=False,
-                                error=str(result)
-                            ))
+                            query = queries[query_idx]
+                            results.append(self._create_failed_result(query, str(result)))
                         else:
                             results.append(result)
 
@@ -236,21 +242,13 @@ class EvalRetriever:
                     pbar.set_postfix({"ok": success_count, "fail": failed_count}, refresh=False)
         else:
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            # Handle exceptions in non-progress mode
-            processed_results = []
-            for i, result in enumerate(results):
-                if isinstance(result, Exception):
-                    processed_results.append(RetrievalResult(
-                        query_id=queries[i].get('_id', f'query_{i}'),
-                        query_text=queries[i].get('text', ''),
-                        query_type=queries[i].get('metadata', {}).get('query_type', 'unknown'),
-                        retrieved_docs=[],
-                        success=False,
-                        error=str(result)
-                    ))
-                else:
-                    processed_results.append(result)
-            results = processed_results
+            # Optimized: handle exceptions with list comprehension
+            results = [
+                self._create_failed_result(queries[i], str(result))
+                if isinstance(result, Exception)
+                else result
+                for i, result in enumerate(results)
+            ]
 
         # Restore logger levels
         for logger_name, old_level in old_levels.items():
