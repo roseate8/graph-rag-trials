@@ -1,0 +1,48 @@
+================================================================================
+SYNTHETIC EVALUATION DATASET GENERATION REPORT
+================================================================================
+
+SAMPLING STATISTICS
+----------------------------------------
+Total chunks in collection: 734
+Number of clusters: 15
+Target samples: 150
+Actual samples: 150
+
+FACT EXTRACTION STATISTICS
+----------------------------------------
+Total facts extracted: 571
+Facts per chunk (avg): 3.8
+Fact types:
+  - factual_claim: 507
+  - temporal_event: 42
+  - comparative_statement: 22
+
+QUERY GENERATION STATISTICS
+----------------------------------------
+Total queries: 183
+Single-hop queries: 124
+Multi-hop queries: 59
+Question styles:
+  - keyword: 33
+  - wh_question: 44
+  - comparison: 59
+  - cloze: 40
+  - paraphrase: 1
+  - paraphrased: 6
+
+SILVER LABELING STATISTICS
+----------------------------------------
+Total labels assigned: 134322
+Label distribution:
+  - Relevance 0: 118157 (88.0%)
+  - Relevance 1: 10946 (8.1%)
+  - Relevance 2: 6 (0.0%)
+  - Relevance 3: 5213 (3.9%)
+
+Average relevant chunks per query: 88.3
+Queries with no relevant chunks: 0
+
+================================================================================
+Generation completed successfully!
+================================================================================
