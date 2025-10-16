@@ -146,25 +146,10 @@ class SilverLabeler:
             logger.debug(f"Mid token-F1 ({f1_score:.2f}) in chunk {chunk_id}")
             return 2
         
-        # 3. Check if same document as gold chunk
-        gold_doc_ids = set()
-        for gold_chunk_id in query.gold_chunk_ids:
-            doc_id = chunk_to_doc.get(gold_chunk_id, '')
-            if doc_id:
-                gold_doc_ids.add(doc_id)
-        
-        chunk_doc_id = chunk_to_doc.get(chunk_id, '')
-        
-        if chunk_doc_id and chunk_doc_id in gold_doc_ids:
-            # Same document - check semantic similarity
-            semantic_sim = self._compute_semantic_similarity(query.query_text, content)
-            
-            if semantic_sim >= self.config.semantic_similarity_threshold:
-                logger.debug(f"High semantic similarity ({semantic_sim:.2f}) in same doc for chunk {chunk_id}")
-                return 2
-            else:
-                logger.debug(f"Low semantic similarity ({semantic_sim:.2f}) in same doc for chunk {chunk_id}")
-                return 1
+        # 3. REMOVED: Same-document bonus (was causing qrel inflation)
+        # Previously marked all chunks from same doc as relevant (score 1-2)
+        # With 100-300 chunk documents, this created avg 62 relevant chunks per query
+        # Now using pure answer-based relevance for objective evaluation
         
         # 4. Use LLM judge for ambiguous cases
         if self.config.enable_llm_judge and self.config.token_f1_low <= f1_score < self.config.token_f1_mid:
