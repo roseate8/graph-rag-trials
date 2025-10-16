@@ -141,8 +141,7 @@ Output ONLY valid JSON, no other text."""
                     }
                 )
                 queries.append(query)
-            
-            logger.debug(f"Generated {len(queries)} single-hop queries for fact {fact.fact_id}")
+
             return queries
 
         except json.JSONDecodeError as e:
@@ -225,8 +224,6 @@ Output ONLY valid JSON, no other text."""
                     }
                 )
                 queries.append(query)
-                
-                logger.debug(f"Generated multi-hop query: {query.query_id}")
 
             except json.JSONDecodeError as e:
                 self.llm_client.handle_llm_error(e, f"fact pair {fact1.fact_id}, {fact2.fact_id}")
@@ -234,8 +231,8 @@ Output ONLY valid JSON, no other text."""
             except Exception as e:
                 self.llm_client.handle_llm_error(e, f"fact pair {fact1.fact_id}, {fact2.fact_id}")
                 continue
-        
-        logger.info(f"Generated {len(queries)} multi-hop queries from {len(fact_pairs)} fact pairs")
+
+        # Don't log here - let the caller handle it (to avoid progress bar interference)
         return queries
     
     def find_linkable_facts(self, all_facts: List[AtomicFact]) -> List[Tuple[AtomicFact, AtomicFact]]:
@@ -326,20 +323,27 @@ Output ONLY valid JSON, no other text."""
 
         # STEP 2: Generate single-hop queries up to target
         logger.info(f"\n[Phase 1/2] Generating single-hop queries (target: {target_single_hop})...")
-        
+
+        # Temporarily suppress DEBUG logs to avoid interfering with progress bar
+        original_level = logging.getLogger('query_generator').level
+        logging.getLogger('query_generator').setLevel(logging.WARNING)
+
         pbar = tqdm(all_facts, desc="Generating single-hop queries", unit="fact", ncols=100)
         for fact in pbar:
             # Stop if we've reached the single-hop target
             if len(single_hop_queries) >= target_single_hop:
                 pbar.write(f"✓ Reached single-hop target of {target_single_hop} queries")
                 break
-            
+
             queries = self.generate_single_hop(fact)
             single_hop_queries.extend(queries)
-            
+
             # Update progress bar with current count
             pbar.set_postfix({"generated": len(single_hop_queries), "target": target_single_hop})
         pbar.close()
+
+        # Restore original log level
+        logging.getLogger('query_generator').setLevel(original_level)
         
         actual_single_hop = len(single_hop_queries)
         logger.info(f"✓ Generated {actual_single_hop} single-hop queries")
@@ -359,20 +363,27 @@ Output ONLY valid JSON, no other text."""
             logger.info(f"  Generating multi-hop queries...")
             
             # Generate multi-hop queries with progress tracking
+            # Temporarily suppress INFO logs to avoid interfering with progress bar
+            original_level = logging.getLogger('query_generator').level
+            logging.getLogger('query_generator').setLevel(logging.WARNING)
+
             pbar_multi = tqdm(fact_pairs, desc="Generating multi-hop queries", unit="pair", ncols=100)
             for fact1, fact2 in pbar_multi:
                 # Stop if we've reached the multi-hop target
                 if len(multi_hop_queries) >= target_multi_hop:
                     pbar_multi.write(f"✓ Reached multi-hop target of {target_multi_hop} queries")
                     break
-                
+
                 # Generate query from this fact pair
                 queries = self.generate_multi_hop([(fact1, fact2)])
                 multi_hop_queries.extend(queries)
-                
+
                 # Update progress bar
                 pbar_multi.set_postfix({"generated": len(multi_hop_queries), "target": target_multi_hop})
             pbar_multi.close()
+
+            # Restore original log level
+            logging.getLogger('query_generator').setLevel(original_level)
         
         actual_multi_hop = len(multi_hop_queries)
         logger.info(f"✓ Generated {actual_multi_hop} multi-hop queries")
