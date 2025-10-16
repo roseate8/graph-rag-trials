@@ -82,56 +82,56 @@ class Evaluator:
             return False
     
     def load_qrels(self) -> bool:
-        """Load qrels (relevance judgments) from TSV file."""
+        """Load qrels (relevance judgments) from TSV file. Optimized: single-pass stats."""
         qrels_path = Path(self.config.qrels_file)
-        
+
         if not qrels_path.exists():
             logger.error(f"Qrels file not found: {qrels_path}")
             return False
-        
+
         try:
+            total_judgments = 0
+
             with open(qrels_path, 'r', encoding='utf-8') as f:
                 # Skip header line
                 next(f)
-                
+
                 for line in f:
                     parts = line.strip().split('\t')
-                    if len(parts) != 3:
-                        continue
-                    
-                    query_id, doc_id, score = parts
-                    self.qrels[query_id][doc_id] = int(score)
-            
-            logger.info(f"✓ Loaded qrels for {len(self.qrels)} queries from {qrels_path}")
-            
-            # Calculate statistics
-            total_judgments = sum(len(docs) for docs in self.qrels.values())
-            avg_judgments = total_judgments / len(self.qrels) if self.qrels else 0
-            
+                    if len(parts) == 3:
+                        query_id, doc_id, score = parts
+                        self.qrels[query_id][doc_id] = int(score)
+                        total_judgments += 1
+
+            num_queries = len(self.qrels)
+            avg_judgments = total_judgments / num_queries if num_queries > 0 else 0
+
+            logger.info(f"✓ Loaded qrels for {num_queries} queries from {qrels_path}")
             logger.info(f"  Total judgments: {total_judgments}")
             logger.info(f"  Avg judgments per query: {avg_judgments:.1f}")
-            
+
             return True
         except Exception as e:
             logger.error(f"Error loading qrels: {e}")
             return False
     
     def load_corpus(self) -> bool:
-        """Load corpus (optional - for analysis)."""
+        """Load corpus (optional - for analysis). Optimized: skip empty lines."""
         corpus_path = Path(self.config.corpus_file)
-        
+
         if not corpus_path.exists():
             logger.warning(f"Corpus file not found: {corpus_path} (optional)")
             return True  # Not critical
-        
+
         try:
             with open(corpus_path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    doc = json.loads(line.strip())
-                    doc_id = doc.get('_id', '')
-                    if doc_id:
-                        self.corpus[doc_id] = doc
-            
+                    if line.strip():  # Skip empty lines
+                        doc = json.loads(line)
+                        doc_id = doc.get('_id')
+                        if doc_id:  # Only store if has valid ID
+                            self.corpus[doc_id] = doc
+
             logger.info(f"✓ Loaded {len(self.corpus)} documents from corpus")
             return True
         except Exception as e:
@@ -179,28 +179,30 @@ class Evaluator:
             self.retriever.disconnect()
     
     def calculate_metrics(self):
-        """Calculate metrics for all queries."""
+        """Calculate metrics for all queries. Optimized: batch processing."""
         logger.info(f"\n{'='*60}")
         logger.info(f"CALCULATING METRICS")
         logger.info(f"{'='*60}")
-        
+
+        success_count = 0
+        no_qrels_count = 0
+
         for result in self.retrieval_results:
             if not result.success:
                 continue
-            
+
             query_id = result.query_id
-            query_type = result.query_type
-            
-            # Get retrieved doc IDs
-            retrieved_ids = [doc['chunk_id'] for doc in result.retrieved_docs]
-            
+
             # Get relevance scores from qrels
-            relevance_scores = self.qrels.get(query_id, {})
-            
+            relevance_scores = self.qrels.get(query_id)
+
             if not relevance_scores:
-                logger.warning(f"No qrels found for query {query_id}")
+                no_qrels_count += 1
                 continue
-            
+
+            # Optimized: extract IDs in list comprehension
+            retrieved_ids = [doc['chunk_id'] for doc in result.retrieved_docs]
+
             # Calculate all metrics for this query
             query_metrics = IRMetrics.calculate_all_metrics(
                 query_id=query_id,
@@ -208,65 +210,67 @@ class Evaluator:
                 relevance_scores=relevance_scores,
                 k_values=self.config.k_values
             )
-            
+
             # Add query type for breakdown
-            query_metrics['query_type'] = query_type
-            
+            query_metrics['query_type'] = result.query_type
+
             self.per_query_metrics.append(query_metrics)
-        
-        logger.info(f"✓ Calculated metrics for {len(self.per_query_metrics)} queries")
+            success_count += 1
+
+        logger.info(f"✓ Calculated metrics for {success_count} queries")
+        if no_qrels_count > 0:
+            logger.warning(f"⚠ Skipped {no_qrels_count} queries without qrels")
     
     def aggregate_results(self) -> Tuple[Dict, Dict, Dict]:
         """
-        Aggregate results overall and by query type.
-        
+        Aggregate results overall and by query type. Optimized: single-pass grouping.
+
         Returns:
             Tuple of (overall_metrics, by_type_metrics, by_k_metrics)
         """
         logger.info(f"\n{'='*60}")
         logger.info(f"AGGREGATING RESULTS")
         logger.info(f"{'='*60}")
-        
+
         # 1. Overall metrics
         overall_metrics = IRMetrics.aggregate_metrics(
             self.per_query_metrics,
             self.config.k_values
         )
         overall_metrics['evaluation_type'] = 'overall'
-        
+
         logger.info(f"✓ Aggregated overall metrics")
-        
-        # 2. By query type (single-hop vs multi-hop)
+
+        # 2. By query type - Optimized: group in single pass
+        grouped_by_type = defaultdict(list)
+        for metrics in self.per_query_metrics:
+            grouped_by_type[metrics['query_type']].append(metrics)
+
         by_type_metrics = {}
-        
-        for query_type in ['single_hop', 'multi_hop', 'unknown']:
-            type_queries = [m for m in self.per_query_metrics if m['query_type'] == query_type]
-            
-            if type_queries:
-                by_type_metrics[query_type] = IRMetrics.aggregate_metrics(
-                    type_queries,
-                    self.config.k_values
-                )
-                by_type_metrics[query_type]['query_type'] = query_type
-                
-                logger.info(f"✓ Aggregated metrics for {query_type}: {len(type_queries)} queries")
-        
-        # 3. By K value (for visualization)
-        by_k_metrics = {}
-        
-        for k in self.config.k_values:
-            by_k_metrics[f"k={k}"] = {
+        for query_type, type_queries in grouped_by_type.items():
+            by_type_metrics[query_type] = IRMetrics.aggregate_metrics(
+                type_queries,
+                self.config.k_values
+            )
+            by_type_metrics[query_type]['query_type'] = query_type
+            logger.info(f"✓ Aggregated metrics for {query_type}: {len(type_queries)} queries")
+
+        # 3. By K value - Optimized: build dict directly
+        by_k_metrics = {
+            f"k={k}": {
                 'k': k,
                 'recall': overall_metrics.get(f'recall@{k}', 0.0),
                 'precision': overall_metrics.get(f'precision@{k}', 0.0),
                 'ndcg': overall_metrics.get(f'ndcg@{k}', 0.0),
                 'hits': overall_metrics.get(f'hits@{k}', 0.0)
             }
-        
+            for k in self.config.k_values
+        }
+
         # Add MAP and MRR
         by_k_metrics['map'] = {'metric': 'MAP', 'value': overall_metrics.get('MAP', 0.0)}
         by_k_metrics['mrr'] = {'metric': 'MRR', 'value': overall_metrics.get('MRR', 0.0)}
-        
+
         return overall_metrics, by_type_metrics, by_k_metrics
     
     def save_results(self, overall_metrics: Dict, by_type_metrics: Dict, by_k_metrics: Dict):

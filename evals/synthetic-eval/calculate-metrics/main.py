@@ -1,6 +1,8 @@
 """
 Main entry point for metrics calculation.
 
+Optimized for clean startup and minimal overhead.
+
 Usage:
     python -m main
     or
@@ -17,19 +19,22 @@ from evaluator import Evaluator
 
 
 def setup_logging():
-    """Setup logging configuration."""
+    """Setup logging configuration. Optimized: lazy log file creation."""
+    # Ensure results directory exists before creating log file
+    Path('results').mkdir(exist_ok=True)
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler('results/evaluation.log', mode='w')
+            logging.FileHandler('results/evaluation.log', mode='w', encoding='utf-8')
         ]
     )
-    
-    # Suppress verbose logging from dependencies
-    logging.getLogger('httpx').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+    # Suppress verbose logging from dependencies - optimized list
+    for logger_name in ['httpx', 'urllib3', 'pymilvus', 'sentence_transformers']:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
 async def main():

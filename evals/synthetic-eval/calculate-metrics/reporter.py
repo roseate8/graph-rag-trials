@@ -1,6 +1,7 @@
 """
 Reporter generates human-readable evaluation reports.
 
+Optimized for efficient string formatting and minimal memory overhead.
 Creates detailed text reports with tables and summaries.
 """
 
@@ -89,33 +90,36 @@ class Reporter:
                 f.write("-" * 80 + "\n")
                 self._write_metrics_table(f, metrics, self.config.k_values)
             
-            # Top performing queries
+            # Top and worst performing queries - Optimized: single sort
             f.write("\n")
             f.write("=" * 80 + "\n")
             f.write("TOP PERFORMING QUERIES (by NDCG@10)\n")
             f.write("=" * 80 + "\n")
-            
-            # Sort by NDCG@10
+
+            # Sort once by NDCG@10
             sorted_queries = sorted(
                 per_query_metrics,
                 key=lambda x: x.get('ndcg@10', 0),
                 reverse=True
             )
-            
+
+            # Top 10 queries
             for i, query in enumerate(sorted_queries[:10], start=1):
                 f.write(f"\n{i}. Query: {query['query_id']}\n")
                 f.write(f"   Type: {query.get('query_type', 'unknown')}\n")
                 f.write(f"   NDCG@10: {query.get('ndcg@10', 0):.4f}\n")
                 f.write(f"   Recall@10: {query.get('recall@10', 0):.4f}\n")
                 f.write(f"   Precision@10: {query.get('precision@10', 0):.4f}\n")
-            
+
             # Worst performing queries
             f.write("\n")
             f.write("=" * 80 + "\n")
             f.write("WORST PERFORMING QUERIES (by NDCG@10)\n")
             f.write("=" * 80 + "\n")
-            
-            for i, query in enumerate(sorted_queries[-10:][::-1], start=1):
+
+            # Reuse sorted list - no need to re-sort or reverse
+            worst_queries = sorted_queries[-10:] if len(sorted_queries) >= 10 else sorted_queries
+            for i, query in enumerate(reversed(worst_queries), start=1):
                 f.write(f"\n{i}. Query: {query['query_id']}\n")
                 f.write(f"   Type: {query.get('query_type', 'unknown')}\n")
                 f.write(f"   NDCG@10: {query.get('ndcg@10', 0):.4f}\n")
