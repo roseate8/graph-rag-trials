@@ -38,7 +38,7 @@ try:
         assert result == {"test": "value"}, f"Failed for: {test_json}"
     print("[PASS] JSON parsing works correctly")
 except Exception as e:
-    print(f"✗ JSON parsing failed: {e}")
+    print(f"[FAIL] JSON parsing failed: {e}")
     sys.exit(1)
 
 # Test 3: Config instantiation
@@ -48,9 +48,9 @@ try:
     print(f"  Model: {config.model_name}")
     print(f"  Target questions: {config.target_questions}")
     print(f"  Multi-hop ratio: {config.multi_hop_ratio}")
-    print("✓ Config instantiation works")
+    print("[PASS] Config instantiation works")
 except Exception as e:
-    print(f"✗ Config failed: {e}")
+    print(f"[FAIL] Config failed: {e}")
     sys.exit(1)
 
 # Test 4: LLMClient parameter preparation
@@ -78,9 +78,9 @@ try:
 
     print(f"  Model: {params['model']}")
     print(f"  Token param: {list(set(params.keys()) & {'max_tokens', 'max_completion_tokens'})}")
-    print("✓ Parameter preparation works")
+    print("[PASS] Parameter preparation works")
 except Exception as e:
-    print(f"✗ Parameter preparation failed: {e}")
+    print(f"[FAIL] Parameter preparation failed: {e}")
     sys.exit(1)
 
 # Test 5: AtomicFact serialization
@@ -100,9 +100,9 @@ try:
     fact_dict = fact.to_dict()
     assert fact_dict["fact_id"] == "test_fact_1"
     assert fact_dict["chunk_id"] == "chunk_123"
-    print("✓ AtomicFact serialization works")
+    print("[PASS] AtomicFact serialization works")
 except Exception as e:
-    print(f"✗ AtomicFact failed: {e}")
+    print(f"[FAIL] AtomicFact failed: {e}")
     sys.exit(1)
 
 # Test 6: Query serialization
@@ -120,11 +120,11 @@ try:
     query_dict = query.to_dict()
     assert query_dict["query_id"] == "q001"
     assert query_dict["query_type"] == "single_hop"
-    print("✓ Query serialization works")
+    print("[PASS] Query serialization works")
 except Exception as e:
-    print(f"✗ Query failed: {e}")
+    print(f"[FAIL] Query failed: {e}")
     sys.exit(1)
 
 print("\n" + "=" * 60)
-print("✓ ALL TESTS PASSED - Refactoring is safe!")
+print("[SUCCESS] ALL TESTS PASSED - Refactoring is safe!")
 print("=" * 60)
