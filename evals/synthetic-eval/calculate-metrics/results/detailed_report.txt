@@ -1,7 +1,7 @@
 ================================================================================
 SYNTHETIC EVALUATION - METRICS REPORT
 ================================================================================
-Generated: 2025-10-16 22:36:48
+Generated: 2025-10-16 22:43:49
 Collection: elastic_embeddings_m3
 Embedding Model: BAAI/bge-m3
 Re-ranking: Enabled
