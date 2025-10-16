@@ -148,51 +148,92 @@ class EvalRetriever:
     ) -> List[RetrievalResult]:
         """
         Retrieve for multiple queries with async batching.
-        
+
         Args:
             queries: List of query dicts
             top_k: Number of documents to retrieve per query
             show_progress: Show progress bar
-            
+
         Returns:
             List of RetrievalResult objects
         """
         logger.info(f"Processing {len(queries)} queries (batch_size={self.config.batch_size}, top_k={top_k})")
-        
+
+        # Suppress noisy loggers during batch processing
+        logging.getLogger('embeddings.milvus_store').setLevel(logging.WARNING)
+        logging.getLogger('retrieval.retrieval').setLevel(logging.WARNING)
+
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.config.max_concurrent)
-        
+
         async def retrieve_with_semaphore(query):
             async with semaphore:
                 return await self.retrieve_single(query, top_k)
-        
+
         # Create tasks
         tasks = [retrieve_with_semaphore(query) for query in queries]
-        
-        # Execute with progress bar
+
+        # Execute with simple progress - gather all at once for cleaner output
         if show_progress:
+            from tqdm import tqdm
             results = []
-            pbar = async_tqdm(
-                asyncio.as_completed(tasks),
-                total=len(tasks),
-                desc="Retrieving",
-                unit="query",
-                ncols=100
-            )
-            for coro in pbar:
-                result = await coro
-                results.append(result)
-                # Update progress with success/failure counts
-                success_count = sum(1 for r in results if r.success)
-                pbar.set_postfix({"success": success_count, "failed": len(results) - success_count})
+
+            # Use tqdm with manual updates for cleaner async handling
+            with tqdm(total=len(queries), desc="Retrieving", unit="query", ncols=80) as pbar:
+                # Process in batches to avoid overwhelming the progress bar
+                for i in range(0, len(tasks), self.config.batch_size):
+                    batch = tasks[i:i + self.config.batch_size]
+                    batch_results = await asyncio.gather(*batch, return_exceptions=True)
+
+                    # Handle exceptions
+                    for j, result in enumerate(batch_results):
+                        if isinstance(result, Exception):
+                            # Create failed result
+                            query_idx = i + j
+                            results.append(RetrievalResult(
+                                query_id=queries[query_idx].get('_id', f'query_{query_idx}'),
+                                query_text=queries[query_idx].get('text', ''),
+                                query_type=queries[query_idx].get('metadata', {}).get('query_type', 'unknown'),
+                                retrieved_docs=[],
+                                success=False,
+                                error=str(result)
+                            ))
+                        else:
+                            results.append(result)
+
+                    pbar.update(len(batch))
+
+                    # Update postfix with current stats
+                    success_count = sum(1 for r in results if r.success)
+                    failed_count = len(results) - success_count
+                    pbar.set_postfix({"ok": success_count, "fail": failed_count}, refresh=False)
         else:
-            results = await asyncio.gather(*tasks)
-        
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            # Handle exceptions in non-progress mode
+            processed_results = []
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    processed_results.append(RetrievalResult(
+                        query_id=queries[i].get('_id', f'query_{i}'),
+                        query_text=queries[i].get('text', ''),
+                        query_type=queries[i].get('metadata', {}).get('query_type', 'unknown'),
+                        retrieved_docs=[],
+                        success=False,
+                        error=str(result)
+                    ))
+                else:
+                    processed_results.append(result)
+            results = processed_results
+
+        # Restore logger levels
+        logging.getLogger('embeddings.milvus_store').setLevel(logging.INFO)
+        logging.getLogger('retrieval.retrieval').setLevel(logging.INFO)
+
         # Summary
         success_count = sum(1 for r in results if r.success)
         failed_count = len(results) - success_count
-        
-        logger.info(f"✓ Retrieval complete: {success_count} success, {failed_count} failed")
-        
+
+        logger.info(f"Retrieval complete: {success_count} success, {failed_count} failed")
+
         return results
 
