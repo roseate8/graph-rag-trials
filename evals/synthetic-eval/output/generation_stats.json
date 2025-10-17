@@ -1,12 +1,10 @@
 {
   "sampling": {
-    "total_chunks": 736,
-    "actual_samples": 736,
-    "num_clusters": "unknown"
+    "skipped": true
   },
   "fact_extraction": {
     "total_facts": 567,
-    "avg_facts_per_chunk": 0.7703804347826086,
+    "avg_facts_per_chunk": 0,
     "fact_types": {
       "factual_claim": 507,
       "temporal_event": 36,
@@ -32,16 +30,18 @@
     "total_labels": 133952,
     "total_queries": 182,
     "label_distribution": {
-      "0": 133628,
+      "0": 124896,
+      "1": 8608,
       "3": 323,
-      "2": 1
+      "2": 125
     },
     "label_percentages": {
-      "0": 99.75812231247015,
+      "0": 93.23936932632584,
+      "1": 6.426182513139035,
       "3": 0.2411311514572384,
-      "2": 0.0007465360726230291
+      "2": 0.09331700907787864
     },
-    "avg_relevant_per_query": 1.7802197802197801,
+    "avg_relevant_per_query": 49.75824175824176,
     "queries_with_no_relevant": 0
   }
 }
