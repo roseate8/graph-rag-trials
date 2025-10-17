@@ -35,14 +35,12 @@ Question styles:
 
 SILVER LABELING STATISTICS
 ----------------------------------------
-Total labels assigned: 133952
+Total labels assigned: 834
 Label distribution:
-  - Relevance 0: 124896 (93.2%)
-  - Relevance 1: 8608 (6.4%)
-  - Relevance 2: 125 (0.1%)
-  - Relevance 3: 323 (0.2%)
+  - Relevance 1: 590 (70.7%)
+  - Relevance 2: 244 (29.3%)
 
-Average relevant chunks per query: 49.8
+Average relevant chunks per query: 0.0
 Queries with no relevant chunks: 0
 
 ================================================================================

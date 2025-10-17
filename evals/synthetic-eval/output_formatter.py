@@ -126,11 +126,15 @@ class OutputFormatter:
         Returns:
             Path to written file
         """
+        if chunks is None:
+            logger.info("Skipping corpus.jsonl writing (chunks not provided)")
+            return None
+
         if output_path is None:
             output_path = self.output_dir / "corpus.jsonl"
         else:
             output_path = Path(output_path)
-        
+
         logger.info(f"Writing {len(chunks)} chunks to {output_path}")
         
         with open(output_path, 'w', encoding='utf-8') as f:

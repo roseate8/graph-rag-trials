@@ -27,21 +27,19 @@
     }
   },
   "silver_labeling": {
-    "total_labels": 133952,
+    "total_labels": 834,
     "total_queries": 182,
     "label_distribution": {
-      "0": 124896,
-      "1": 8608,
-      "3": 323,
-      "2": 125
+      "2": 244,
+      "1": 590
     },
     "label_percentages": {
-      "0": 93.23936932632584,
-      "1": 6.426182513139035,
-      "3": 0.2411311514572384,
-      "2": 0.09331700907787864
+      "2": 29.256594724220626,
+      "1": 70.74340527577938
     },
-    "avg_relevant_per_query": 49.75824175824176,
-    "queries_with_no_relevant": 0
+    "avg_labels_per_query": 4.582417582417582,
+    "score_2_count": 244,
+    "score_1_count": 590,
+    "queries_with_no_labels": 0
   }
 }

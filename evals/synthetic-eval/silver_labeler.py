@@ -46,7 +46,8 @@ class SilverLabeler:
         """
         self.config = config
         self.retriever = retriever
-        self.collection = retriever.vector_store.collection
+        # Access the collection from retriever's milvus_store attribute
+        self.collection = retriever.milvus_store.collection
 
         logger.info("Initialized SilverLabeler with neighbor-based approach (0-2 scale)")
 

@@ -419,16 +419,10 @@ def main():
 
         # 7. Assign silver labels
         logger.info("\nSTEP 4: Assigning silver labels...")
-        labeler = SilverLabeler(config, llm_manager, retriever)
+        labeler = SilverLabeler(config, retriever)
 
-        # Fetch all chunks if we don't have them
-        if all_chunks is None:
-            logger.info("  Fetching all chunks from Milvus for labeling...")
-            sampler = ChunkSampler(config, retriever)
-            all_chunks = sampler.fetch_all_chunks()
-            logger.info(f"  Fetched {len(all_chunks)} chunks")
-
-        qrels = labeler.batch_label_queries(queries, all_chunks)
+        # No need to fetch all chunks - labeler queries Milvus directly for neighbors
+        qrels = labeler.batch_label_queries(queries)
         
         logger.info(f"  Labeled {len(qrels)} queries")
         
@@ -457,7 +451,8 @@ def main():
 
         logger.info(f"\nOutput files written to: {config.output_dir}")
         for file_type, file_path in output_files.items():
-            logger.info(f"  - {file_type}: {Path(file_path).name}")
+            if file_path:  # Skip None paths (e.g., corpus when not provided)
+                logger.info(f"  - {file_type}: {Path(file_path).name}")
 
         # 9. Optional: Validate retrieval
         if config.validate_retrieval:
