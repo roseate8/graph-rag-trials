@@ -211,22 +211,39 @@ class SilverLabeler:
         if len(content) > max_content_len:
             content = content[:max_content_len] + "..."
         
-        prompt = f"""Grade the relevance of this chunk to the query on a 0-3 scale.
+        prompt = f"""You are evaluating chunk relevance for a RAG (Retrieval-Augmented Generation) system.
 
-Query: {query.query_text}
-Expected answer: {query.answer}
+QUERY: {query.query_text}
+EXPECTED ANSWER: {query.answer}
 
-Chunk: {content}
+CHUNK TEXT:
+{content}
 
-Rubric:
-- 3: Contains exact answer or clearly paraphrased answer
-- 2: Provides supporting context that helps answer the query, but not the direct answer
-- 1: Same topic/domain but minimal relevance to the specific query
-- 0: Not relevant to the query
+TASK: Rate this chunk's relevance on a 0-3 scale:
 
-Think carefully about whether the chunk contains the answer or just related information.
+**Grade 3 (Highly Relevant - Contains Answer)**
+- The chunk directly contains the expected answer (exact or paraphrased)
+- Someone could answer the query using ONLY this chunk
+- The answer is explicitly stated, not just implied
 
-Output ONLY a single number (0, 1, 2, or 3). No explanation."""
+**Grade 2 (Relevant - Supporting Context)**
+- The chunk provides information that helps answer the query
+- Contains background, definitions, related facts, or context needed to understand the answer
+- Mentions key entities/concepts from the query but doesn't provide the complete answer
+- Would be useful to include alongside the answer chunk
+
+**Grade 1 (Marginally Relevant - Same Topic)**
+- The chunk discusses the same general topic/domain as the query
+- Shares some keywords or entities but doesn't help answer the specific question
+- Someone reading it would know it's "about the right thing" but couldn't answer the query
+
+**Grade 0 (Not Relevant)**
+- Different topic or completely unrelated to the query
+- No meaningful overlap with query intent
+
+CRITICAL: Be generous with grades 1-2. In a RAG system, providing contextually related chunks (even if they don't contain the exact answer) helps the LLM generate better responses.
+
+OUTPUT: Single digit only (0, 1, 2, or 3). No explanation or justification."""
 
         try:
             messages = [
