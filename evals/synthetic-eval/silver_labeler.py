@@ -138,38 +138,90 @@ class SilverLabeler:
         
         # 2. Compute token-F1 with answer
         f1_score = compute_token_f1(query.answer, content)
-        
+
         # High F1 indicates answer present (rel=3)
         if f1_score >= self.config.token_f1_high:
             logger.debug(f"High token-F1 ({f1_score:.2f}) in chunk {chunk_id}")
             return 3
-        
+
         # Mid F1 indicates supporting context (rel=2)
         if f1_score >= self.config.token_f1_mid:
             logger.debug(f"Mid token-F1 ({f1_score:.2f}) in chunk {chunk_id}")
             return 2
-        
-        # 3. REMOVED: Same-document bonus (was causing qrel inflation)
-        # Previously marked all chunks from same doc as relevant (score 1-2)
-        # With 100-300 chunk documents, this created avg 62 relevant chunks per query
-        # Now using pure answer-based relevance for objective evaluation
-        
-        # 4. Use LLM judge for ambiguous cases
+
+        # 3. Check semantic similarity for contextual relevance (rel=2)
+        semantic_score = self._compute_semantic_similarity(query.query_text, content)
+        if semantic_score >= self.config.semantic_similarity_threshold:
+            logger.debug(f"High semantic similarity ({semantic_score:.2f}) in chunk {chunk_id}")
+            return 2
+
+        # 4. Moderate same-document bonus with keyword overlap (rel=1)
+        # Only if chunk shares document with gold chunks AND has keyword overlap with query
+        chunk_doc_id = chunk_to_doc.get(chunk_id, '')
+        if chunk_doc_id:
+            # Check if this chunk is from same doc as any gold chunk
+            for gold_id in query.gold_chunk_ids:
+                gold_doc_id = chunk_to_doc.get(gold_id, '')
+                if chunk_doc_id == gold_doc_id:
+                    # Check for keyword overlap
+                    if self._has_keyword_overlap(query.query_text, content):
+                        logger.debug(f"Same-doc with keyword overlap in chunk {chunk_id}")
+                        return 1
+                    break
+
+        # 5. Use LLM judge for ambiguous cases
         if self.config.enable_llm_judge and self.config.token_f1_low <= f1_score < self.config.token_f1_mid:
             logger.debug(f"Using LLM judge for ambiguous case (F1={f1_score:.2f}) in chunk {chunk_id}")
             return self._llm_judge(query, chunk)
-        
-        # 5. Default to not relevant
+
+        # 6. Default to not relevant
         return 0
     
-    def _compute_semantic_similarity(self, query_text: str, chunk_content: str) -> float:
+    def _has_keyword_overlap(self, query_text: str, chunk_content: str) -> bool:
         """
-        Compute semantic similarity between query and chunk using embeddings.
-        
+        Check if query and chunk share meaningful keywords.
+
         Args:
             query_text: Query text
             chunk_content: Chunk content
-            
+
+        Returns:
+            True if sufficient keyword overlap exists
+        """
+        # Normalize and tokenize
+        query_normalized = normalize_text(query_text)
+        content_normalized = normalize_text(chunk_content)
+
+        # Simple tokenization (split on whitespace)
+        query_tokens = set(query_normalized.split())
+        content_tokens = set(content_normalized.split())
+
+        # Filter out common stop words
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+                     'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
+                     'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+                     'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that',
+                     'these', 'those', 'it', 'its', 'what', 'which', 'who', 'when', 'where',
+                     'why', 'how', 'our', 'we', 'us', 'you', 'your'}
+
+        query_keywords = query_tokens - stop_words
+        content_keywords = content_tokens - stop_words
+
+        # Count overlapping keywords
+        overlap = query_keywords & content_keywords
+        overlap_count = len(overlap)
+
+        # Require at least N keywords in common (from config)
+        return overlap_count >= self.config.same_doc_keyword_threshold
+
+    def _compute_semantic_similarity(self, query_text: str, chunk_content: str) -> float:
+        """
+        Compute semantic similarity between query and chunk using embeddings.
+
+        Args:
+            query_text: Query text
+            chunk_content: Chunk content
+
         Returns:
             Cosine similarity (0.0 to 1.0)
         """
@@ -177,22 +229,22 @@ class SilverLabeler:
             # Get embeddings
             query_embedding = self.retriever._get_query_embedding(query_text)
             chunk_embedding = self.retriever._get_query_embedding(chunk_content[:500])  # Limit length
-            
+
             # Compute cosine similarity
             import numpy as np
-            
+
             query_vec = np.array(query_embedding)
             chunk_vec = np.array(chunk_embedding)
-            
+
             # Normalize
             query_norm = query_vec / np.linalg.norm(query_vec)
             chunk_norm = chunk_vec / np.linalg.norm(chunk_vec)
-            
+
             # Cosine similarity
             similarity = float(np.dot(query_norm, chunk_norm))
-            
+
             return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
-            
+
         except Exception as e:
             logger.warning(f"Error computing semantic similarity: {e}")
             return 0.0

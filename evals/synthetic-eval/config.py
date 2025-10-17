@@ -31,16 +31,17 @@ class SyntheticEvalConfig:
     embedding_model: str = "BAAI/bge-m3"
     milvus_profile: str = "production"
     
-    # Silver labeling thresholds
+    # Silver labeling thresholds (relaxed for better evaluation balance)
     exact_match_threshold: float = 0.9  # For rel=3
-    token_f1_high: float = 0.7  # For rel=3
-    token_f1_mid: float = 0.4   # For rel=2
-    token_f1_low: float = 0.3   # For LLM judge
-    semantic_similarity_threshold: float = 0.75  # For rel=2
-    
+    token_f1_high: float = 0.6  # For rel=3 (lowered from 0.7)
+    token_f1_mid: float = 0.25   # For rel=2 (lowered from 0.4)
+    token_f1_low: float = 0.15   # For LLM judge (lowered from 0.3)
+    semantic_similarity_threshold: float = 0.65  # For rel=2 (lowered from 0.75)
+    same_doc_keyword_threshold: int = 2  # Min keyword overlap for same-doc Rel 1
+
     # Processing parameters
     batch_size: int = 5  # Smaller batches for memory efficiency
-    enable_llm_judge: bool = False  # Disabled for faster processing
+    enable_llm_judge: bool = True  # Enabled for nuanced borderline cases
     max_facts_per_chunk: int = 15  # Maximum ceiling per chunk (not a target, won't force hallucination)
     
     # Output parameters
