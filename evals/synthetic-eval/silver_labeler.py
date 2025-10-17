@@ -149,71 +149,15 @@ class SilverLabeler:
             logger.debug(f"Mid token-F1 ({f1_score:.2f}) in chunk {chunk_id}")
             return 2
 
-        # 3. Check semantic similarity for contextual relevance (rel=2)
-        semantic_score = self._compute_semantic_similarity(query.query_text, content)
-        if semantic_score >= self.config.semantic_similarity_threshold:
-            logger.debug(f"High semantic similarity ({semantic_score:.2f}) in chunk {chunk_id}")
-            return 2
-
-        # 4. Moderate same-document bonus with keyword overlap (rel=1)
-        # Only if chunk shares document with gold chunks AND has keyword overlap with query
-        chunk_doc_id = chunk_to_doc.get(chunk_id, '')
-        if chunk_doc_id:
-            # Check if this chunk is from same doc as any gold chunk
-            for gold_id in query.gold_chunk_ids:
-                gold_doc_id = chunk_to_doc.get(gold_id, '')
-                if chunk_doc_id == gold_doc_id:
-                    # Check for keyword overlap
-                    if self._has_keyword_overlap(query.query_text, content):
-                        logger.debug(f"Same-doc with keyword overlap in chunk {chunk_id}")
-                        return 1
-                    break
-
-        # 5. Use LLM judge for ambiguous cases
-        if self.config.enable_llm_judge and self.config.token_f1_low <= f1_score < self.config.token_f1_mid:
-            logger.debug(f"Using LLM judge for ambiguous case (F1={f1_score:.2f}) in chunk {chunk_id}")
+        # 3. Use LLM judge for lower F1 scores to catch more nuanced relevance
+        # This is the primary mechanism for finding Rel 1 and Rel 2 chunks
+        if self.config.enable_llm_judge and f1_score >= self.config.token_f1_low:
+            logger.debug(f"Using LLM judge for F1={f1_score:.2f} in chunk {chunk_id}")
             return self._llm_judge(query, chunk)
 
-        # 6. Default to not relevant
+        # 4. Default to not relevant
         return 0
     
-    def _has_keyword_overlap(self, query_text: str, chunk_content: str) -> bool:
-        """
-        Check if query and chunk share meaningful keywords.
-
-        Args:
-            query_text: Query text
-            chunk_content: Chunk content
-
-        Returns:
-            True if sufficient keyword overlap exists
-        """
-        # Normalize and tokenize
-        query_normalized = normalize_text(query_text)
-        content_normalized = normalize_text(chunk_content)
-
-        # Simple tokenization (split on whitespace)
-        query_tokens = set(query_normalized.split())
-        content_tokens = set(content_normalized.split())
-
-        # Filter out common stop words
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-                     'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
-                     'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-                     'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that',
-                     'these', 'those', 'it', 'its', 'what', 'which', 'who', 'when', 'where',
-                     'why', 'how', 'our', 'we', 'us', 'you', 'your'}
-
-        query_keywords = query_tokens - stop_words
-        content_keywords = content_tokens - stop_words
-
-        # Count overlapping keywords
-        overlap = query_keywords & content_keywords
-        overlap_count = len(overlap)
-
-        # Require at least N keywords in common (from config)
-        return overlap_count >= self.config.same_doc_keyword_threshold
-
     def _compute_semantic_similarity(self, query_text: str, chunk_content: str) -> float:
         """
         Compute semantic similarity between query and chunk using embeddings.
