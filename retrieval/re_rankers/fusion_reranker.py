@@ -193,9 +193,8 @@ class FusionReranker:
                 for chunk in unique_chunks.values()
             ]
             
-            # Re-rank all chunks for this sub-query
-            # Note: We pass len(unique_chunks) as top_k to get scores for ALL chunks
-            rerank_results = reranker.rerank(sub_query, chunk_dicts, top_k=len(unique_chunks))
+            # Re-rank top-K chunks for this sub-query (not all unique chunks)
+            rerank_results = reranker.rerank(sub_query, chunk_dicts, top_k=top_k)
             
             # Store scores for this sub-query
             for result in rerank_results:
