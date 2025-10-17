@@ -225,9 +225,9 @@ class Evaluator:
         Returns:
             Tuple of (overall_metrics, by_type_metrics, by_k_metrics)
         """
-        logger.info(f"\n{'='*60}")
-        logger.info(f"AGGREGATING RESULTS")
-        logger.info(f"{'='*60}")
+        logger.info(f"\n{'='*80}")
+        logger.info(f"AGGREGATION")
+        logger.info(f"{'='*80}")
 
         # 1. Overall metrics
         overall_metrics = IRMetrics.aggregate_metrics(
