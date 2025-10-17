@@ -73,8 +73,7 @@ class Evaluator:
                         qtype = query.get('metadata', {}).get('query_type', 'unknown')
                         type_counts[qtype] += 1
 
-            logger.info(f"✓ Loaded {len(self.queries)} queries from {queries_path}")
-            logger.info(f"  Query types: {dict(type_counts)}")
+            logger.info(f"Loaded {len(self.queries)} queries ({', '.join(f'{k}={v}' for k, v in type_counts.items())})")
 
             return True
         except Exception as e:
@@ -106,9 +105,7 @@ class Evaluator:
             num_queries = len(self.qrels)
             avg_judgments = total_judgments / num_queries if num_queries > 0 else 0
 
-            logger.info(f"✓ Loaded qrels for {num_queries} queries from {qrels_path}")
-            logger.info(f"  Total judgments: {total_judgments}")
-            logger.info(f"  Avg judgments per query: {avg_judgments:.1f}")
+            logger.info(f"Loaded qrels: {num_queries} queries, {total_judgments} judgments (avg={avg_judgments:.1f}/query)")
 
             return True
         except Exception as e:
@@ -132,7 +129,7 @@ class Evaluator:
                         if doc_id:  # Only store if has valid ID
                             self.corpus[doc_id] = doc
 
-            logger.info(f"✓ Loaded {len(self.corpus)} documents from corpus")
+            logger.info(f"Loaded corpus: {len(self.corpus)} documents")
             return True
         except Exception as e:
             logger.warning(f"Error loading corpus (non-critical): {e}")
@@ -145,9 +142,9 @@ class Evaluator:
         Returns:
             True if successful
         """
-        logger.info(f"\n{'='*60}")
-        logger.info(f"RUNNING BATCH RETRIEVAL")
-        logger.info(f"{'='*60}")
+        logger.info(f"\n{'='*80}")
+        logger.info(f"BATCH RETRIEVAL")
+        logger.info(f"{'='*80}")
         
         if not self.retriever.connect():
             logger.error("Failed to connect to retriever")
@@ -166,10 +163,10 @@ class Evaluator:
             
             # Separate successful and failed
             self.failed_queries = [r for r in self.retrieval_results if not r.success]
-            
+
             if self.failed_queries:
-                logger.warning(f"⚠ {len(self.failed_queries)} queries failed retrieval")
-            
+                logger.warning(f"Warning: {len(self.failed_queries)} queries failed retrieval")
+
             return True
         
         except Exception as e:
@@ -180,9 +177,9 @@ class Evaluator:
     
     def calculate_metrics(self):
         """Calculate metrics for all queries. Optimized: batch processing."""
-        logger.info(f"\n{'='*60}")
-        logger.info(f"CALCULATING METRICS")
-        logger.info(f"{'='*60}")
+        logger.info(f"\n{'='*80}")
+        logger.info(f"METRICS CALCULATION")
+        logger.info(f"{'='*80}")
 
         success_count = 0
         no_qrels_count = 0
@@ -217,9 +214,9 @@ class Evaluator:
             self.per_query_metrics.append(query_metrics)
             success_count += 1
 
-        logger.info(f"✓ Calculated metrics for {success_count} queries")
+        logger.info(f"Calculated metrics for {success_count} queries")
         if no_qrels_count > 0:
-            logger.warning(f"⚠ Skipped {no_qrels_count} queries without qrels")
+            logger.warning(f"Skipped {no_qrels_count} queries without qrels")
     
     def aggregate_results(self) -> Tuple[Dict, Dict, Dict]:
         """

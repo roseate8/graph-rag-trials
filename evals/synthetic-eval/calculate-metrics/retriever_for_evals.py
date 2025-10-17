@@ -199,22 +199,27 @@ class EvalRetriever:
         Returns:
             List of RetrievalResult objects
         """
-        logger.info(f"Processing {len(queries)} queries (batch_size={self.config.batch_size}, top_k={top_k})")
+        total_queries = len(queries)
+        logger.info(f"Retrieving top-{top_k} chunks for {total_queries} queries (batch={self.config.batch_size}, concurrent={self.config.max_concurrent})")
 
         # Suppress noisy loggers during batch processing
         old_levels = {}
         noisy_loggers = [
             'embeddings.milvus_store',
-            'retrieval.retrieval',     # RAGSystem uses MilvusRetriever internally
+            'retrieval.retrieval',
             'retrieval.core',
-            'retrieval.decomposer',    # Query decomposer (if enabled)
+            'retrieval.decomposer',
+            'retrieval.re_rankers.fusion_reranker',
+            'reranker_model',
             'pymilvus',
-            'handler'
+            'handler',
+            'httpx',
+            'httpcore'
         ]
         for logger_name in noisy_loggers:
             noisy_logger = logging.getLogger(logger_name)
             old_levels[logger_name] = noisy_logger.level
-            noisy_logger.setLevel(logging.CRITICAL)  # Suppress everything except critical
+            noisy_logger.setLevel(logging.ERROR)  # Only show errors during batch processing
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.config.max_concurrent)
@@ -226,19 +231,18 @@ class EvalRetriever:
         # Create tasks
         tasks = [retrieve_with_semaphore(query) for query in queries]
 
-        # Execute with simple progress - gather all at once for cleaner output
+        # Execute with progress bar
         if show_progress:
             from tqdm import tqdm
             results = []
 
-            # Use tqdm with manual updates for cleaner async handling
-            with tqdm(total=len(queries), desc="Retrieving", unit="query", ncols=80) as pbar:
-                # Process in batches to avoid overwhelming the progress bar
+            with tqdm(total=total_queries, desc="Retrieval", unit="q", ncols=80, leave=False) as pbar:
+                # Process in batches for cleaner updates
                 for i in range(0, len(tasks), self.config.batch_size):
                     batch = tasks[i:i + self.config.batch_size]
                     batch_results = await asyncio.gather(*batch, return_exceptions=True)
 
-                    # Optimized: handle exceptions with helper function
+                    # Handle exceptions
                     for j, result in enumerate(batch_results):
                         if isinstance(result, Exception):
                             query_idx = i + j
@@ -249,13 +253,14 @@ class EvalRetriever:
 
                     pbar.update(len(batch))
 
-                    # Update postfix with current stats
-                    success_count = sum(1 for r in results if r.success)
-                    failed_count = len(results) - success_count
-                    pbar.set_postfix({"ok": success_count, "fail": failed_count}, refresh=False)
+                    # Update stats
+                    success = sum(1 for r in results if r.success)
+                    failed = len(results) - success
+                    pbar.set_postfix({"ok": success, "fail": failed}, refresh=False)
+
+            pbar.close()
         else:
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            # Optimized: handle exceptions with list comprehension
             results = [
                 self._create_failed_result(queries[i], str(result))
                 if isinstance(result, Exception)
@@ -271,7 +276,10 @@ class EvalRetriever:
         success_count = sum(1 for r in results if r.success)
         failed_count = len(results) - success_count
 
-        logger.info(f"Retrieval complete: {success_count} success, {failed_count} failed")
+        if failed_count > 0:
+            logger.info(f"Complete: {success_count}/{total_queries} succeeded, {failed_count} failed")
+        else:
+            logger.info(f"Complete: {success_count}/{total_queries} queries retrieved successfully")
 
         return results
 
