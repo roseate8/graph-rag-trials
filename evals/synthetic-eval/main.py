@@ -148,6 +148,18 @@ def load_queries_from_file(file_path: Path) -> list:
         for line in f:
             if line.strip():
                 query_dict = json.loads(line)
+                # Handle _id vs query_id naming
+                if '_id' in query_dict and 'query_id' not in query_dict:
+                    query_dict['query_id'] = query_dict.pop('_id')
+                if 'text' in query_dict and 'query_text' not in query_dict:
+                    query_dict['query_text'] = query_dict.pop('text')
+                # Extract answer from metadata if needed
+                if 'answer' not in query_dict and 'metadata' in query_dict:
+                    query_dict['answer'] = query_dict['metadata'].get('answer', '')
+                    query_dict['gold_chunk_ids'] = query_dict['metadata'].get('gold_chunk_ids', [])
+                    query_dict['query_type'] = query_dict['metadata'].get('query_type', 'single_hop')
+                    query_dict['question_style'] = query_dict['metadata'].get('question_style', 'wh_question')
+                    # Keep metadata for other fields
                 # Reconstruct Query object
                 query = Query(**query_dict)
                 queries.append(query)
