@@ -31,11 +31,11 @@ class SyntheticEvalConfig:
     embedding_model: str = "BAAI/bge-m3"
     milvus_profile: str = "production"
     
-    # Silver labeling thresholds (relaxed for better evaluation balance)
+    # Silver labeling thresholds (balanced for speed and quality)
     exact_match_threshold: float = 0.9  # For rel=3
     token_f1_high: float = 0.6  # For rel=3 (lowered from 0.7)
     token_f1_mid: float = 0.25   # For rel=2 (lowered from 0.4)
-    token_f1_low: float = 0.10   # For LLM judge - lowered to catch more chunks (was 0.3)
+    token_f1_low: float = 0.20   # For LLM judge - raised from 0.10 for faster processing
     semantic_similarity_threshold: float = 0.65  # Unused currently
 
     # Processing parameters
