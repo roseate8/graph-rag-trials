@@ -1,0 +1,735 @@
+{
+  "summary": {
+    "total_queries": 182,
+    "no_gold_retrieved": 37,
+    "percentage": 20.33
+  },
+  "queries": [
+    {
+      "query_id": "q0037",
+      "query_text": "Which category of information includes private details related to our operations and clients?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_84",
+        "dutch-board-report-fiscal-year-2024-1_chunk_85",
+        "dutch-board-report-fiscal-year-2024-1_chunk_86"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_56",
+        "Form 10-K 2024_chunk_422",
+        "Form 10-K 2024_chunk_398",
+        "Form 10-K 2024_chunk_405",
+        "Form 10-K 2025_chunk_312"
+      ],
+      "gold_chunk_answer": "large amounts of proprietary and confidential data, including personal data"
+    },
+    {
+      "query_id": "q0112",
+      "query_text": "The new platform announced by Elastic for enhancing RAG is called ___",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "First Quarter Fiscal 2024 Financial Results_chunk_23",
+        "Q3FY24-Investor-Presentation_chunk_4",
+        "Form 10-K 2025_chunk_35",
+        "Form 10-K 2022_chunk_32",
+        "dutch-board-report-fiscal-year-2024-1_chunk_26"
+      ],
+      "gold_chunk_answer": "Elastic AI Ecosystem"
+    },
+    {
+      "query_id": "q0139",
+      "query_text": "If the customer accounting for 11% of the total revenue generated the same proportion of net income as its revenue contribution, what would be the net income attributable to this customer for the year ended April 30, 2024?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Form 10-K 2024_chunk_28",
+        "annual-report-fiscal-year-2024_chunk_20",
+        "annual-report-fiscal-year-2024_chunk_21",
+        "annual-report-fiscal-year-2024_chunk_22"
+      ],
+      "top_5_retrieved": [
+        "annual-report-fiscal-year-2024_table_5",
+        "annual-report-fiscal-year-2024_table_28",
+        "annual-report-fiscal-year-2024_chunk_229",
+        "Form 10-K 2025_chunk_226",
+        "Form 10-K 2024_chunk_228"
+      ],
+      "gold_chunk_answer": "$6.787 million"
+    },
+    {
+      "query_id": "q0102",
+      "query_text": "Elastic's security enhancement involved integrating ___ into its AI security system.",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_25",
+        "Form 10-K 2025_chunk_41",
+        "Q3FY25-Investor-Presentation_chunk_4",
+        "Form 10-K 2025_chunk_24",
+        "Q2FY25-Investor-Presentation_chunk_4"
+      ],
+      "gold_chunk_answer": "Cloud Detection and Response"
+    },
+    {
+      "query_id": "q0106",
+      "query_text": "Elastic achieved ___ OpenTelemetry native observability to simplify data collection and Kubernetes integration.",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_24",
+        "ecs-opentelemetry_chunk_1",
+        "Form 10-K 2025_chunk_42",
+        "ECS RFC process questions - Elastic Stack _ Elasticsearch - Discuss the Elastic Stack_chunk_69",
+        "Q1FY24-Investor-Presentation_chunk_3"
+      ],
+      "gold_chunk_answer": "100% OpenTelemetry (OTel) native observability"
+    },
+    {
+      "query_id": "q0113",
+      "query_text": "How are monitoring data elements aligned within ECS according to the OpenTelemetry standards?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "ecs-otel-alignment-details_chunk_4",
+        "ecs-otel-alignment-details_chunk_5",
+        "ecs-otel-alignment-details_chunk_6"
+      ],
+      "top_5_retrieved": [
+        "ecs-opentelemetry_chunk_1",
+        "ecs-otel-alignment-overview_chunk_2",
+        "ecs-otel-alignment-overview_chunk_9",
+        "ecs-otel-alignment-overview_chunk_8",
+        "ecs-otel-alignment-overview_chunk_7"
+      ],
+      "gold_chunk_answer": "field and attribute alignment for monitoring data in ECS"
+    },
+    {
+      "query_id": "q0104",
+      "query_text": "Elastic's feature for improved cloud-based threat analysis",
+      "query_type": "single_hop",
+      "question_style": "paraphrased",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_42",
+        "Form 10-K 2025_chunk_25",
+        "Form 10-K 2025_chunk_41",
+        "Form 10-K 2024_chunk_24",
+        "annual-report-fiscal-year-2024_chunk_24"
+      ],
+      "gold_chunk_answer": "Cloud Detection and Response"
+    },
+    {
+      "query_id": "q0096",
+      "query_text": "Which approach did Elastic develop to lower memory consumption in vector searches without losing accuracy?",
+      "query_type": "single_hop",
+      "question_style": "paraphrased",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_35",
+        "Form 10-K 2025_chunk_39",
+        "dutch-board-report-fiscal-year-2024-1_chunk_11",
+        "Form 10-K 2025_chunk_19",
+        "Form 10-K 2025_chunk_24"
+      ],
+      "gold_chunk_answer": "Better Binary Quantization (BBQ)"
+    },
+    {
+      "query_id": "q0156",
+      "query_text": "Based on the reports, how does the percentage increase in deferred revenue compare to the actual increase in dollar amount from the previous fiscal year to FY 2024?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2024 Financial Results_chunk_330",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_331",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_332",
+        "dutch-board-report-fiscal-year-2024-1_chunk_238",
+        "dutch-board-report-fiscal-year-2024-1_chunk_239",
+        "dutch-board-report-fiscal-year-2024-1_chunk_240"
+      ],
+      "top_5_retrieved": [
+        "annual-report-fiscal-year-2024_chunk_229",
+        "Form 10-K 2025_chunk_227",
+        "Form 10-K 2024_chunk_228",
+        "Form 10-K 2025_chunk_264",
+        "dutch-board-report-fiscal-year-2024-1_chunk_305"
+      ],
+      "gold_chunk_answer": "The deferred revenue increased by 24%, which corresponds to an increase of $103 million from the previous amount of $433 million."
+    },
+    {
+      "query_id": "q0084",
+      "query_text": "What issue can impair business operations if not addressed quickly?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_85",
+        "dutch-board-report-fiscal-year-2024-1_chunk_86",
+        "dutch-board-report-fiscal-year-2024-1_chunk_87"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2022_chunk_92",
+        "Form 10-K 2025_chunk_129",
+        "Form 10-K 2022_chunk_55",
+        "Form 10-K 2022_chunk_142",
+        "Form 10-K 2025_chunk_88"
+      ],
+      "gold_chunk_answer": "damage or disruption to the company's systems or networks"
+    },
+    {
+      "query_id": "q0101",
+      "query_text": "What component did Elastic add to its security platform to improve threat detection using cloud data?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_25",
+        "Form 10-K 2025_chunk_42",
+        "annual-report-fiscal-year-2024_chunk_24",
+        "Form 10-K 2024_chunk_24",
+        "Form 10-K 2022_chunk_153"
+      ],
+      "gold_chunk_answer": "Cloud Detection and Response"
+    },
+    {
+      "query_id": "q0085",
+      "query_text": "The main problem affecting the company's operations is ___",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_85",
+        "dutch-board-report-fiscal-year-2024-1_chunk_86",
+        "dutch-board-report-fiscal-year-2024-1_chunk_87"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2022_chunk_55",
+        "dutch-board-report-fiscal-year-2024-1_chunk_79",
+        "annual-report-fiscal-year-2024_chunk_75",
+        "Form 10-K 2024_chunk_75",
+        "Form 10-K 2022_chunk_92"
+      ],
+      "gold_chunk_answer": "damage or disruption to the company's systems or networks"
+    },
+    {
+      "query_id": "q0168",
+      "query_text": "Based on Elastic's stock chart available at /stock-info/default.aspx#stock-chart and its total revenue of $1.267 billion for the year ending April 30, 2024, how might the financial performance have influenced the stock trend depicted in the chart?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "First Quarter Fiscal 2025 Financial Results_chunk_10",
+        "First Quarter Fiscal 2025 Financial Results_chunk_11",
+        "First Quarter Fiscal 2025 Financial Results_chunk_12",
+        "annual-report-fiscal-year-2024_chunk_19",
+        "annual-report-fiscal-year-2024_chunk_20",
+        "annual-report-fiscal-year-2024_chunk_21"
+      ],
+      "top_5_retrieved": [
+        "First Quarter Fiscal 2024 Financial Results_chunk_23",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_2",
+        "dutch-board-report-fiscal-year-2024-1_chunk_233",
+        "First Quarter Fiscal 2024 Financial Results_chunk_2",
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_26"
+      ],
+      "gold_chunk_answer": "The stock trend depicted in the chart reflects Elastic's financial performance, with a total revenue of $1.267 billion for the year ending April 30, 2024, indicating a healthy financial position that could have influenced positive stock movement."
+    },
+    {
+      "query_id": "q0181",
+      "query_text": "Did Elastic Cloud's revenue in 2024, which was $547,520 thousand and accounted for 43% of total revenue, meet or exceed the company's guidance for that year?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Form 10-K 2024_chunk_227",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_22",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_23",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Second Quarter Fiscal 2024 Financial Results_chunk_2",
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_2",
+        "First Quarter Fiscal 2024 Financial Results_chunk_2",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_2",
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_3"
+      ],
+      "gold_chunk_answer": "Yes, Elastic Cloud's revenue met or exceeded the company's guidance for 2024."
+    },
+    {
+      "query_id": "q0103",
+      "query_text": "Elastic Cloud Detection and Response",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_42",
+        "Form 10-K 2025_chunk_25",
+        "Form 10-K 2025_chunk_41",
+        "Form 10-K 2022_chunk_19",
+        "annual-report-fiscal-year-2024_chunk_24"
+      ],
+      "gold_chunk_answer": "Cloud Detection and Response"
+    },
+    {
+      "query_id": "q0163",
+      "query_text": "How does the documentation of the client port attribute mapping in ECS ensure consistency in security data normalization using the Elastic Common Schema?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Form 10-K 2025_chunk_41",
+        "ecs-otel-alignment-details_chunk_4",
+        "ecs-otel-alignment-details_chunk_5",
+        "ecs-otel-alignment-details_chunk_6"
+      ],
+      "top_5_retrieved": [
+        "ecs-getting-started_chunk_1",
+        "ecs-principles-implementation_chunk_1",
+        "0008-threat-intel_chunk_1",
+        "index_chunk_1",
+        "0032-definition-of-ecs-compliance_chunk_7"
+      ],
+      "gold_chunk_answer": "Since the client port attribute mapping in ECS matches the OpenTelemetry specification and security data is normalized using ECS, this ensures that security data follows a consistent schema aligned with the attribute's documentation."
+    },
+    {
+      "query_id": "q0114",
+      "query_text": "The process of standardizing how monitoring data are organized in ECS involves ___",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "ecs-otel-alignment-details_chunk_4",
+        "ecs-otel-alignment-details_chunk_5",
+        "ecs-otel-alignment-details_chunk_6"
+      ],
+      "top_5_retrieved": [
+        "ecs-getting-started_chunk_2",
+        "ecs-getting-started_chunk_1",
+        "ecs-principles-implementation_chunk_1",
+        "ecs-principles-implementation_chunk_2",
+        "0025-container-metric-fields_chunk_1"
+      ],
+      "gold_chunk_answer": "field and attribute alignment for monitoring data in ECS"
+    },
+    {
+      "query_id": "q0094",
+      "query_text": "The method introduced by Elastic to improve memory usage in vector search was ___",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_35",
+        "Form 10-K 2022_chunk_28",
+        "annual-report-fiscal-year-2024_chunk_33",
+        "Form 10-K 2024_chunk_33",
+        "annual-report-fiscal-year-2024_chunk_34"
+      ],
+      "gold_chunk_answer": "Better Binary Quantization (BBQ)"
+    },
+    {
+      "query_id": "q0150",
+      "query_text": "How does Elastic's powerful search platform for building search AI applications influence the pricing options and plans available on the company's website?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_328",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_329",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_330",
+        "dutch-board-report-fiscal-year-2024-1_chunk_11",
+        "dutch-board-report-fiscal-year-2024-1_chunk_12",
+        "dutch-board-report-fiscal-year-2024-1_chunk_13"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2022_chunk_153",
+        "annual-report-fiscal-year-2024_chunk_143",
+        "Form 10-K 2024_chunk_143",
+        "First Quarter Fiscal 2025 Financial Results_chunk_27",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_28"
+      ],
+      "gold_chunk_answer": "Elastic's advanced search platform supports diverse search AI applications, which are offered through various pricing options and plans on their website."
+    },
+    {
+      "query_id": "q0134",
+      "query_text": "Based on Elastic N.V.'s financial reports, what consistent commitment does the company make regarding user data privacy across both the second quarter of fiscal 2024 and the fourth quarter of fiscal 2024?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_356",
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_357",
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_358",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_332",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_333",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_334"
+      ],
+      "top_5_retrieved": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_233",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_27",
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_26",
+        "dutch-board-report-fiscal-year-2024-1_chunk_43",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_26"
+      ],
+      "gold_chunk_answer": "Elastic N.V. consistently guarantees to respect user data privacy and not share information with third parties in both periods."
+    },
+    {
+      "query_id": "q0107",
+      "query_text": "Elastic OpenTelemetry native observability",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Q1FY24-Investor-Presentation_chunk_3",
+        "ECS RFC process questions - Elastic Stack _ Elasticsearch - Discuss the Elastic Stack_chunk_69",
+        "Form 10-K 2025_chunk_24",
+        "Form 10-K 2025_chunk_42",
+        "ecs-opentelemetry_chunk_1"
+      ],
+      "gold_chunk_answer": "100% OpenTelemetry (OTel) native observability"
+    },
+    {
+      "query_id": "q0111",
+      "query_text": "Which platform launched the ecosystem to accelerate Retrieval Augmented Generation?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_24",
+        "Form 10-K 2025_chunk_35",
+        "Form 10-K 2024_chunk_19",
+        "Q4FY24-Investor-Presentation_chunk_7",
+        "annual-report-fiscal-year-2024_chunk_19"
+      ],
+      "gold_chunk_answer": "Elastic AI Ecosystem"
+    },
+    {
+      "query_id": "q0110",
+      "query_text": "Elastic AI Ecosystem",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_33",
+        "Form 10-K 2025_chunk_24",
+        "Form 10-K 2025_chunk_19",
+        "annual-report-fiscal-year-2024_chunk_18",
+        "Form 10-K 2024_chunk_18"
+      ],
+      "gold_chunk_answer": "Elastic AI Ecosystem"
+    },
+    {
+      "query_id": "q0099",
+      "query_text": "The monitoring and management platform launched by Elastic is ___",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_39",
+        "Form 10-K 2025_chunk_24",
+        "Form 10-K 2022_chunk_153",
+        "Form 10-K 2025_chunk_42",
+        "annual-report-fiscal-year-2024_chunk_143"
+      ],
+      "gold_chunk_answer": "AutoOps"
+    },
+    {
+      "query_id": "q0018",
+      "query_text": "Elastic Cloud consumption growth",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "Form 10-K 2022_chunk_82",
+        "Form 10-K 2022_chunk_83",
+        "Form 10-K 2022_chunk_84"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_151",
+        "dutch-board-report-fiscal-year-2024-1_chunk_54",
+        "Q1FY24-Investor-Presentation_chunk_9",
+        "Form 10-K 2025_chunk_29",
+        "Q3FY25-Investor-Presentation_chunk_7"
+      ],
+      "gold_chunk_answer": "continue to increase"
+    },
+    {
+      "query_id": "q0093",
+      "query_text": "What technique did Elasticsearch introduce to optimize vector search memory efficiency?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_35",
+        "Form 10-K 2022_chunk_28",
+        "annual-report-fiscal-year-2024_chunk_33",
+        "Form 10-K 2024_chunk_33",
+        "Form 10-K 2024_chunk_34"
+      ],
+      "gold_chunk_answer": "Better Binary Quantization (BBQ)"
+    },
+    {
+      "query_id": "q0097",
+      "query_text": "Elastic's innovation for efficient vector retrieval",
+      "query_type": "single_hop",
+      "question_style": "paraphrased",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_35",
+        "Form 10-K 2025_chunk_19",
+        "Form 10-K 2022_chunk_28",
+        "dutch-board-report-fiscal-year-2024-1_chunk_11",
+        "annual-report-fiscal-year-2024_chunk_33"
+      ],
+      "gold_chunk_answer": "Better Binary Quantization (BBQ)"
+    },
+    {
+      "query_id": "q0118",
+      "query_text": "client address stability",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "ecs-otel-alignment-details_chunk_4",
+        "ecs-otel-alignment-details_chunk_5",
+        "ecs-otel-alignment-details_chunk_6"
+      ],
+      "top_5_retrieved": [
+        "ecs-client_chunk_2",
+        "Form 10-K 2022_chunk_88",
+        "annual-report-fiscal-year-2024_chunk_93",
+        "dutch-board-report-fiscal-year-2024-1_chunk_120",
+        "Form 10-K 2025_chunk_89"
+      ],
+      "gold_chunk_answer": "client address mapping is considered stable"
+    },
+    {
+      "query_id": "q0167",
+      "query_text": "What was the total revenue for 2024, and how does its year-over-year growth rate compare to the revenue increase from 2022 to 2024?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Form 10-K 2024_chunk_227",
+        "Q3FY24-Investor-Presentation_chunk_10",
+        "Q3FY24-Investor-Presentation_chunk_8",
+        "Q3FY24-Investor-Presentation_chunk_9"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_22",
+        "Form 10-K 2024_chunk_147",
+        "annual-report-fiscal-year-2024_chunk_147",
+        "Form 10-K 2025_chunk_145",
+        "dutch-board-report-fiscal-year-2024-1_chunk_62"
+      ],
+      "gold_chunk_answer": "The total revenue for 2024 was $1,068,989 thousand, and it increased by 19% in Q3FY24 compared to the previous year, reflecting a significant year-over-year growth in total revenue."
+    },
+    {
+      "query_id": "q0166",
+      "query_text": "What was the total revenue for the fiscal year ending April 30, 2023, and how does the third quarter's revenue before the increase compare to it?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Third Quarter Fiscal 2024 Financial Results_chunk_189",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_190",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_191",
+        "annual-report-fiscal-year-2024_chunk_19",
+        "annual-report-fiscal-year-2024_chunk_20",
+        "annual-report-fiscal-year-2024_chunk_21"
+      ],
+      "top_5_retrieved": [
+        "annual-report-fiscal-year-2024_chunk_229",
+        "Form 10-K 2024_chunk_228",
+        "annual-report-fiscal-year-2024_table_9",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_2",
+        "Third Quarter Fiscal 2024 Financial Results_chunk_3"
+      ],
+      "gold_chunk_answer": "The total revenue for the year ending April 30, 2023, was $1.069 billion, and the third quarter's revenue before the 100% increase was approximately $163,978.50, which is significantly less than the yearly total."
+    },
+    {
+      "query_id": "q0154",
+      "query_text": "What was the approximate dollar amount of Elastic Cloud Revenue in Q3FY24, given it constituted 44% of the total revenue that year, and how does this compare to the total revenue in 2022?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Form 10-K 2022_chunk_206",
+        "Form 10-K 2022_chunk_207",
+        "Form 10-K 2022_chunk_208",
+        "Q3FY24-Investor-Presentation_chunk_10",
+        "Q3FY24-Investor-Presentation_chunk_8",
+        "Q3FY24-Investor-Presentation_chunk_9"
+      ],
+      "top_5_retrieved": [
+        "Fourth Quarter and Fiscal 2024 Financial Results_chunk_2",
+        "Fourth Quarter and Fiscal 2025 Financial Results_chunk_2",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_2",
+        "First Quarter Fiscal 2024 Financial Results_chunk_2",
+        "Second Quarter Fiscal 2024 Financial Results_chunk_2"
+      ],
+      "gold_chunk_answer": "Approximately 379,491 thousand dollars in Q3FY24, which is about 44% of the total revenue of 862,374 thousand dollars in 2022."
+    },
+    {
+      "query_id": "q0041",
+      "query_text": "causes of operational disruption and financial loss",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_84",
+        "dutch-board-report-fiscal-year-2024-1_chunk_85",
+        "dutch-board-report-fiscal-year-2024-1_chunk_86"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2022_chunk_144",
+        "Form 10-K 2025_chunk_130",
+        "dutch-board-report-fiscal-year-2024-1_chunk_82",
+        "Form 10-K 2022_chunk_92",
+        "annual-report-fiscal-year-2024_chunk_133"
+      ],
+      "gold_chunk_answer": "cybersecurity incidents, loss of confidential information, operational disruption, financial damages"
+    },
+    {
+      "query_id": "q0115",
+      "query_text": "ECS monitoring data standardization",
+      "query_type": "single_hop",
+      "question_style": "keyword",
+      "gold_chunks": [
+        "ecs-otel-alignment-details_chunk_4",
+        "ecs-otel-alignment-details_chunk_5",
+        "ecs-otel-alignment-details_chunk_6"
+      ],
+      "top_5_retrieved": [
+        "ecs-getting-started_chunk_2",
+        "ecs-getting-started_chunk_1",
+        "ecs-principles-implementation_chunk_2",
+        "ecs-principles-implementation_chunk_1",
+        "ecs-opentelemetry_chunk_1"
+      ],
+      "gold_chunk_answer": "field and attribute alignment for monitoring data in ECS"
+    },
+    {
+      "query_id": "q0108",
+      "query_text": "What initiative did Elastic introduce to assist developers with RAG deployment?",
+      "query_type": "single_hop",
+      "question_style": "wh_question",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_27",
+        "Form 10-K 2022_chunk_33",
+        "annual-report-fiscal-year-2024_chunk_22",
+        "Q1FY24-Investor-Presentation_chunk_3",
+        "dutch-board-report-fiscal-year-2024-1_chunk_11"
+      ],
+      "gold_chunk_answer": "Elastic AI Ecosystem"
+    },
+    {
+      "query_id": "q0173",
+      "query_text": "What is the difference between the net cash provided by operating activities and the total comprehensive income for the year ended April 30, 2024?",
+      "query_type": "multi_hop",
+      "question_style": "comparison",
+      "gold_chunks": [
+        "Form 10-K 2024_chunk_196",
+        "annual-report-fiscal-year-2024_chunk_20",
+        "annual-report-fiscal-year-2024_chunk_21",
+        "annual-report-fiscal-year-2024_chunk_22"
+      ],
+      "top_5_retrieved": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_72",
+        "Form 10-K 2022_chunk_188",
+        "Form 10-K 2022_chunk_189",
+        "Form 10-K 2025_chunk_174",
+        "dutch-board-report-fiscal-year-2024-1_chunk_361"
+      ],
+      "gold_chunk_answer": "$88,703,000"
+    },
+    {
+      "query_id": "q0056",
+      "query_text": "The increased attention from authorities is referred to as ___",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "dutch-board-report-fiscal-year-2024-1_chunk_85",
+        "dutch-board-report-fiscal-year-2024-1_chunk_86",
+        "dutch-board-report-fiscal-year-2024-1_chunk_87"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2022_chunk_147",
+        "Form 10-K 2022_chunk_69",
+        "Form 10-K 2022_chunk_146",
+        "Form 10-K 2025_chunk_111",
+        "annual-report-fiscal-year-2024_chunk_133"
+      ],
+      "gold_chunk_answer": "new or enhanced governmental or regulatory scrutiny"
+    },
+    {
+      "query_id": "q0109",
+      "query_text": "The Elastic AI Ecosystem was ___ to help enterprise developers.",
+      "query_type": "single_hop",
+      "question_style": "cloze",
+      "gold_chunks": [
+        "Second Quarter Fiscal 2025 Financial Results_chunk_22",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_23",
+        "Second Quarter Fiscal 2025 Financial Results_chunk_24"
+      ],
+      "top_5_retrieved": [
+        "Form 10-K 2025_chunk_33",
+        "Q1FY25-Investor-Presentation_chunk_4",
+        "Form 10-K 2025_chunk_24",
+        "annual-report-fiscal-year-2024_chunk_18",
+        "Form 10-K 2024_chunk_18"
+      ],
+      "gold_chunk_answer": "Elastic AI Ecosystem"
+    }
+  ]
+}
