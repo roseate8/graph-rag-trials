@@ -30,9 +30,14 @@ class MilvusDocumentLoader:
         if not self.store.connect():
             raise ConnectionError(f"Failed to connect to Milvus at {self.config.host}:{self.config.port}")
         
-        # Load collection
-        if not self.store.load_collection():
-            raise RuntimeError(f"Failed to load collection: {self.config.collection_name}")
+        # Check if collection exists and load it
+        if not self.store.collection_exists():
+            raise RuntimeError(f"Collection '{self.config.collection_name}' does not exist")
+        
+        # Load the collection
+        from pymilvus import Collection
+        self.store.collection = Collection(self.config.collection_name)
+        self.store.collection.load()
         
         logger.info(f"Connected to Milvus collection: {self.config.collection_name}")
     
