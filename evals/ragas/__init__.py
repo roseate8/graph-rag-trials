@@ -3,15 +3,15 @@
 __version__ = "1.0.0"
 
 from .config import (
-    ELASTICSEARCH_CONFIG,
+    MILVUS_CONFIG,
     RAGAS_CONFIG,
     OPENAI_CONFIG,
     OUTPUT_CONFIG,
     validate_config,
 )
 
-from .elasticsearch_loader import (
-    ElasticsearchDocumentLoader,
+from .milvus_loader import (
+    MilvusDocumentLoader,
     load_documents_for_ragas,
 )
 
@@ -20,12 +20,12 @@ from .generate_testset import RagasTestsetGenerator
 from .evaluate_rag import RagasEvaluator
 
 __all__ = [
-    "ELASTICSEARCH_CONFIG",
+    "MILVUS_CONFIG",
     "RAGAS_CONFIG",
     "OPENAI_CONFIG",
     "OUTPUT_CONFIG",
     "validate_config",
-    "ElasticsearchDocumentLoader",
+    "MilvusDocumentLoader",
     "load_documents_for_ragas",
     "RagasTestsetGenerator",
     "RagasEvaluator",

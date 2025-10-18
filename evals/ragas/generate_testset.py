@@ -13,8 +13,8 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from ragas.testset import TestsetGenerator
 from langchain.docstore.document import Document as LangchainDocument
 
-from config import RAGAS_CONFIG, OPENAI_CONFIG, OUTPUT_CONFIG, LOGGING_CONFIG, validate_config
-from elasticsearch_loader import load_documents_for_ragas
+from config import RAGAS_CONFIG, OPENAI_CONFIG, OUTPUT_CONFIG, LOGGING_CONFIG, MILVUS_CONFIG, validate_config
+from milvus_loader import load_documents_for_ragas
 
 # Configure logging
 logging.basicConfig(
@@ -191,14 +191,22 @@ def main(testset_size: int = None, max_documents: int = None, sample_strategy: s
     output_dir = output_dir or OUTPUT_CONFIG["output_dir"]
     
     # Load documents
-    logger.info("Loading documents from Elasticsearch...")
+    logger.info("Loading documents from Milvus...")
     try:
-        documents = load_documents_for_ragas(max_documents=max_documents, sample_strategy=sample_strategy)
+        # Create Milvus config
+        from embeddings.milvus_config import MilvusConfig as MilvusConfigClass
+        milvus_config = MilvusConfigClass(**MILVUS_CONFIG)
+        
+        documents = load_documents_for_ragas(
+            max_documents=max_documents, 
+            sample_strategy=sample_strategy,
+            config=milvus_config
+        )
         if not documents:
-            logger.error("No documents loaded")
+            logger.error("No documents loaded from Milvus")
             sys.exit(1)
     except Exception as e:
-        logger.error(f"Failed to load documents: {e}", exc_info=True)
+        logger.error(f"Failed to load documents from Milvus: {e}", exc_info=True)
         sys.exit(1)
     
     # Generate testset

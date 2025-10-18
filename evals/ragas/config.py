@@ -5,17 +5,18 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
-# Add vector-ingest to path for llm_utils
+# Add vector-ingest to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "vector-ingest" / "src" / "chunking" / "processors"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "vector-ingest" / "src"))
 
-# Elasticsearch Configuration
-ELASTICSEARCH_CONFIG = {
-    "url": "https://1600c6e333fd4bdb8c8e9b9dec5c5fef.us-west-2.aws.found.io:443",
-    "username": "elastic",
-    "password": "XI6rIccvUKLCgVnX11QPI8CV",
-    "index_name": "embeddings_index_fixed",  # Using available index with 5498 docs
-    "verify_certs": True,
-    "timeout": 30,
+# Milvus Configuration
+MILVUS_CONFIG = {
+    "host": "localhost",
+    "port": 19530,
+    "collection_name": "document_chunks",
+    "embedding_dim": 384,  # BGE-small-en-v1.5 dimension
+    "index_type": "HNSW",
+    "metric_type": "IP",
 }
 
 # Ragas Test Generation Configuration
@@ -69,25 +70,14 @@ LOGGING_CONFIG = {
 
 
 @dataclass
-class ElasticsearchConfig:
-    """Elasticsearch connection configuration."""
-    url: str
-    username: str
-    password: str
-    index_name: str
-    verify_certs: bool = True
-    timeout: int = 30
-
-
-@dataclass
-class RagasGenerationConfig:
-    """Ragas test generation configuration."""
-    testset_size: int
-    generator_model: str
-    critic_model: str
-    embeddings_model: str
-    max_documents: int
-    distributions: dict = field(default_factory=dict)
+class MilvusConfig:
+    """Milvus connection configuration."""
+    host: str
+    port: int
+    collection_name: str
+    embedding_dim: int
+    index_type: str = "HNSW"
+    metric_type: str = "IP"
 
 
 def validate_config() -> bool:
