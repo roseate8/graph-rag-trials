@@ -44,7 +44,7 @@ class MilvusConfig:
             # Optimized search parameters
             if self.index_type == "HNSW":
                 self.search_params = {
-                    "ef": 128  # Increased for better search quality (64->128)
+                    "ef": 800  # High recall search (128->800)
                 }
             elif self.index_type in ["IVF_FLAT", "IVF_SQ8"]:
                 self.search_params = {
@@ -95,7 +95,7 @@ CONFIGS = {
     ),
     
     "production": MilvusConfig(
-        host="localhost", 
+        host="localhost",
         port=19530,
         collection_name="document_chunks",
         index_type="HNSW",  # Best performance for production
